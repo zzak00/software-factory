@@ -1,0 +1,5 @@
+interface:
+  display_name: "Implement"
+  short_description: "Build one in-progress ticket with a commit gate"
+policy:
+  allow_implicit_invocation: false

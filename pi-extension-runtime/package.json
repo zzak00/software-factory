@@ -1,0 +1,9 @@
+{
+  "name": "software-factory-pi-permission-runtime",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Reproducible runtime for the software factory Pi permission extension",
+  "dependencies": {
+    "@gotgenes/pi-permission-system": "31.1.3"
+  }
+}

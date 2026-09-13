@@ -1,0 +1,58 @@
+name: factory-checks
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  crucial:
+    name: crucial (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - macos-latest
+          - ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install macOS check tools
+        if: runner.os == 'macOS'
+        run: brew install jq shellcheck
+
+      - name: Install Linux check tools
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes jq shellcheck
+
+      - name: Check Bash syntax
+        run: bash -n scripts/*.sh test/*.sh test/fakes/*
+
+      - name: Run ShellCheck
+        run: shellcheck scripts/*.sh test/*.sh test/fakes/*
+
+      - name: Run crucial script tests
+        run: |
+          bash test/setup-factory.test.sh
+          bash test/install-skills.test.sh
+          bash test/install-pi-permissions.test.sh
+          bash test/verify-pi-worktree.test.sh
+          bash test/review-boundary.test.sh
+          bash test/cleanup-ticket.test.sh
+          bash test/factory-workflow.test.sh
+
+      - name: Verify skill and permission locks
+        run: bash test/locks.test.sh
+
+      - name: Verify portable archive
+        run: bash test/archive.test.sh HEAD

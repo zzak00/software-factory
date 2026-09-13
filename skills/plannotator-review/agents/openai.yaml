@@ -1,0 +1,5 @@
+interface:
+  display_name: "Plannotator Review"
+  short_description: "Return visual diff feedback to the review session"
+policy:
+  allow_implicit_invocation: false

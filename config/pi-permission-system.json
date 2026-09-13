@@ -1,0 +1,30 @@
+{
+  "debugLog": false,
+  "permissionReviewLog": false,
+  "yoloMode": false,
+  "doublePressToConfirm": true,
+  "permission": {
+    "*": "ask",
+    "path": {
+      "*": "allow",
+      "*.env": "deny",
+      "*.env.*": "deny",
+      "*.pem": "deny",
+      "*.key": "deny",
+      "*/.git": "deny",
+      "*/.git/*": "deny",
+      "*/.pi/extensions/pi-permission-system/config.json": "deny",
+      "~/.ssh/*": "deny"
+    },
+    "read": "allow",
+    "grep": "allow",
+    "find": "allow",
+    "ls": "allow",
+    "write": "allow",
+    "edit": "allow",
+    "bash": {
+      "*": "ask"
+    },
+    "external_directory": "ask"
+  }
+}

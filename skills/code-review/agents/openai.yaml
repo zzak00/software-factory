@@ -1,0 +1,5 @@
+interface:
+  display_name: "Code Review"
+  short_description: "Review a committed ticket with an inferred base"
+policy:
+  allow_implicit_invocation: false

@@ -1,0 +1,47 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+[[ "$*" == 'ci --ignore-scripts --legacy-peer-deps --omit=dev --no-audit --no-fund' ]] || {
+  printf 'unexpected npm invocation: %s\n' "$*" >&2
+  exit 1
+}
+
+if [[ -n ${PI_PERMISSIONS_FAKE_LOG:-} ]]; then
+  printf 'npm %s\n' "$*" >>"$PI_PERMISSIONS_FAKE_LOG"
+fi
+
+if [[ ${PI_PERMISSIONS_FAKE_NPM_FAIL:-false} == true ]]; then
+  printf 'simulated frozen npm install failure\n' >&2
+  exit 1
+fi
+
+jq -e '
+  .lockfileVersion == 3 and
+  .packages[""].dependencies["@gotgenes/pi-permission-system"] == "31.1.3" and
+  ([.packages | to_entries[] | select(.key != "") | .value.integrity | startswith("sha512-")] | all)
+' package-lock.json >/dev/null || {
+  printf 'invalid factory package lock\n' >&2
+  exit 1
+}
+
+mkdir -p \
+  'node_modules/@gotgenes/pi-permission-system' \
+  'node_modules/tree-sitter-bash' \
+  'node_modules/web-tree-sitter' \
+  'node_modules/zod' \
+  'node_modules/node-addon-api' \
+  'node_modules/node-gyp-build'
+
+printf '%s\n' '{"name":"@gotgenes/pi-permission-system","version":"31.1.3"}' \
+  >'node_modules/@gotgenes/pi-permission-system/package.json'
+printf '%s\n' '{"name":"tree-sitter-bash","version":"0.25.1","main":"index.js"}' \
+  >'node_modules/tree-sitter-bash/package.json'
+printf '%s\n' 'module.exports = { language: {} };' >'node_modules/tree-sitter-bash/index.js'
+printf '%s\n' '{"name":"web-tree-sitter","version":"0.26.13"}' \
+  >'node_modules/web-tree-sitter/package.json'
+printf '%s\n' '{"name":"zod","version":"4.6.0"}' >'node_modules/zod/package.json'
+printf '%s\n' '{"name":"node-addon-api","version":"8.9.2"}' \
+  >'node_modules/node-addon-api/package.json'
+printf '%s\n' '{"name":"node-gyp-build","version":"4.8.4"}' \
+  >'node_modules/node-gyp-build/package.json'

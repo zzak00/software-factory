@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+case "${1:-} ${2:-}" in
+  'auth status')
+    exit 0
+    ;;
+  'repo view')
+    printf '{"defaultBranchRef":{"name":"%s"}}\n' "${CLEANUP_TEST_BASE_BRANCH:?}"
+    ;;
+  'pr view')
+    printf '{"state":"MERGED","isDraft":false,"baseRefName":"%s","headRefName":"%s","headRefOid":"%s","mergeCommit":{"oid":"%s"},"closingIssuesReferences":[{"id":"I_test","number":1,"repository":{"name":"repo","owner":{"login":"test"}},"url":"https://github.com/test/repo/issues/1"}],"url":"https://github.com/test/repo/pull/2"}\n' \
+      "${CLEANUP_TEST_BASE_BRANCH:?}" \
+      "${CLEANUP_TEST_HEAD_BRANCH:?}" \
+      "${CLEANUP_TEST_HEAD_OID:?}" \
+      "${CLEANUP_TEST_MERGE_OID:?}"
+    ;;
+  'issue view')
+    printf '{"state":"%s","url":"https://github.com/test/repo/issues/1"}\n' \
+      "${CLEANUP_TEST_ISSUE_STATE:?}"
+    ;;
+  *)
+    printf 'unexpected gh invocation: %s\n' "$*" >&2
+    exit 1
+    ;;
+esac
