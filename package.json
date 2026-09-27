@@ -1,0 +1,16 @@
+{
+  "name": "software-factory",
+  "version": "1.0.0",
+  "private": true,
+  "description": "A lean codebase-only development workflow and reusable skill bundle.",
+  "engines": {
+    "node": ">=24.8.0"
+  },
+  "scripts": {
+    "test": "node --test test/repository.test.mjs && bash test/install-skills.test.sh && bash test/configure-project.test.sh"
+  },
+  "devDependencies": {
+    "html-validate": "11.16.0",
+    "yaml": "2.9.1"
+  }
+}

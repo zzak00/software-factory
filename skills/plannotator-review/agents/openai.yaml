@@ -1,5 +1,5 @@
 interface:
   display_name: "Plannotator Review"
-  short_description: "Return visual diff feedback to the review session"
+  short_description: "Visually review an explicit diff boundary"
 policy:
   allow_implicit_invocation: false

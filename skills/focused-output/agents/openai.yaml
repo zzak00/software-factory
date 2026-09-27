@@ -1,0 +1,4 @@
+interface:
+  display_name: "Focused Output"
+  short_description: "Concise, clear, action-oriented responses"
+  default_prompt: "Use $focused-output to keep responses concise, clear, and action-oriented."
