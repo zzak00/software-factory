@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="A focused map for planning, implementing, reviewing, and integrating code changes with explicit human authority.">
+  <title>Software Factory - Codebase Mental Map</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --ink: #f5f3ea;
+      --muted: #aaa9a4;
+      --faint: #74756f;
+      --paper: #11120f;
+      --panel: #191b17;
+      --panel-2: #22251f;
+      --line: #3b3f35;
+      --lime: #c8f560;
+      --cyan: #66d9ef;
+      --coral: #ff826f;
+      --gold: #f4c95d;
+      --violet: #b9a0ff;
+      --max: 1440px;
+      --shadow: 0 24px 80px rgba(0, 0, 0, .32);
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 14% 8%, rgba(200, 245, 96, .08), transparent 30rem),
+        radial-gradient(circle at 92% 30%, rgba(102, 217, 239, .07), transparent 34rem),
+        var(--paper);
+      font: 15px/1.58 ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      opacity: .25;
+      background-image:
+        linear-gradient(rgba(255, 255, 255, .025) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, .025) 1px, transparent 1px);
+      background-size: 32px 32px;
+      mask-image: linear-gradient(to bottom, black, transparent 90%);
+    }
+
+    a { color: inherit; }
+    summary { font: inherit; }
+    :focus-visible { outline: 2px solid var(--lime); outline-offset: 3px; }
+    .shell { width: min(var(--max), calc(100% - 34px)); margin: 0 auto; }
+
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 30;
+      border-bottom: 1px solid rgba(255, 255, 255, .08);
+      background: rgba(17, 18, 15, .84);
+      backdrop-filter: blur(18px);
+    }
+
+    .topbar-inner {
+      min-height: 58px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      text-decoration: none;
+      font-weight: 760;
+      letter-spacing: -.02em;
+      white-space: nowrap;
+    }
+
+    .brand-mark {
+      display: grid;
+      place-items: center;
+      width: 31px;
+      height: 31px;
+      color: #10110e;
+      background: var(--lime);
+      border-radius: 9px;
+      box-shadow: 0 0 25px rgba(200, 245, 96, .18);
+      font: 800 13px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+    }
+
+    nav { display: flex; gap: 4px; overflow-x: auto; scrollbar-width: none; }
+    nav a { padding: 8px 10px; color: var(--muted); border-radius: 8px; text-decoration: none; font-size: 13px; white-space: nowrap; }
+    nav a:hover, nav a:focus-visible { color: var(--ink); background: rgba(255, 255, 255, .05); }
+
+    header {
+      padding: 86px 0 52px;
+      display: grid;
+      grid-template-columns: minmax(0, 1.25fr) minmax(290px, .75fr);
+      gap: clamp(32px, 7vw, 110px);
+      align-items: end;
+    }
+
+    .eyebrow, .kicker {
+      color: var(--lime);
+      font: 700 12px/1.3 ui-monospace, SFMono-Regular, Menlo, monospace;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+    }
+
+    h1 { max-width: 920px; margin: 18px 0 20px; font-size: clamp(44px, 7vw, 96px); line-height: .93; letter-spacing: -.065em; font-weight: 810; }
+    .lede { max-width: 790px; margin: 0; color: #cbc9c1; font-size: clamp(17px, 2vw, 22px); line-height: 1.52; }
+    .north-star { padding: 6px 0 6px 24px; border-left: 2px solid var(--lime); }
+    .north-star strong { display: block; margin-bottom: 10px; color: var(--lime); font: 700 12px/1.3 ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .12em; text-transform: uppercase; }
+    .north-star p { margin: 0; font-size: 17px; }
+    .north-star small { display: block; margin-top: 12px; color: var(--muted); }
+
+    section { padding: 56px 0; scroll-margin-top: 70px; }
+    .section-head { display: grid; grid-template-columns: minmax(230px, .42fr) minmax(0, 1fr); gap: 32px; align-items: start; margin-bottom: 30px; }
+    .section-head h2 { margin: 7px 0 0; font-size: clamp(28px, 4vw, 52px); line-height: 1; letter-spacing: -.045em; }
+    .section-head p { max-width: 800px; margin: 5px 0 0; color: var(--muted); font-size: 17px; }
+
+    .panel { border: 1px solid var(--line); border-radius: 18px; background: linear-gradient(145deg, rgba(34, 37, 31, .96), rgba(22, 24, 20, .96)); box-shadow: var(--shadow); }
+    .legend { display: flex; flex-wrap: wrap; gap: 10px 18px; margin-bottom: 17px; color: var(--muted); font-size: 12px; }
+    .legend span { display: inline-flex; align-items: center; gap: 7px; }
+    .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--lime); }
+    .dot.local { background: var(--cyan); }
+    .dot.gate { background: var(--coral); }
+    .dot.truth { background: var(--gold); }
+
+    .stack-map { display: grid; grid-template-columns: 200px minmax(0, 1fr); overflow: hidden; }
+    .stack-label, .stack-content { min-height: 106px; border-bottom: 1px solid var(--line); }
+    .stack-label:last-of-type, .stack-content:last-of-type { border-bottom: 0; }
+    .stack-label { padding: 25px; color: var(--muted); background: rgba(255, 255, 255, .018); border-right: 1px solid var(--line); font: 700 12px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .1em; text-transform: uppercase; }
+    .stack-label b { display: block; margin-top: 7px; color: var(--ink); font-size: 15px; letter-spacing: 0; text-transform: none; }
+    .stack-content { padding: 19px; display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px; }
+
+    .tool { position: relative; min-height: 68px; padding: 14px 15px 13px 17px; border: 1px solid #42463b; border-radius: 12px; background: rgba(10, 11, 9, .38); }
+    .tool::before { content: ""; position: absolute; left: -1px; top: 15px; bottom: 15px; width: 3px; background: var(--cyan); border-radius: 4px; }
+    .tool.gate::before { background: var(--coral); }
+    .tool.truth::before { background: var(--gold); }
+    .tool.human::before { background: var(--lime); }
+    .tool strong { display: block; margin-bottom: 3px; font-size: 14px; }
+    .tool span { color: var(--muted); font-size: 12px; line-height: 1.35; }
+
+    .flow { display: grid; grid-template-columns: repeat(5, minmax(190px, 1fr)); gap: 12px; overflow-x: auto; padding: 4px 4px 20px; }
+    .flow-step { position: relative; min-height: 184px; padding: 18px; display: flex; flex-direction: column; border: 1px solid var(--line); border-radius: 15px; background: var(--panel); }
+    .flow-step::after { content: "→"; position: absolute; z-index: 3; right: -19px; top: 40px; color: var(--faint); font-size: 22px; }
+    .flow-step:last-child::after { display: none; }
+    .flow-step .num { color: var(--lime); font: 700 12px/1 ui-monospace, SFMono-Regular, Menlo, monospace; }
+    .flow-step h3 { margin: 12px 0 8px; font-size: 17px; line-height: 1.2; }
+    .flow-step p { margin: 0 0 18px; color: var(--muted); font-size: 12.5px; }
+    .flow-step .status { display: inline-block; align-self: flex-start; margin-top: auto; padding: 5px 8px; color: #111; background: var(--gold); border-radius: 7px; font: 700 10px/1 ui-monospace, SFMono-Regular, Menlo, monospace; }
+
+    .sizing { margin-top: 26px; padding: clamp(22px, 4vw, 38px); }
+    .sizing-head { display: grid; grid-template-columns: minmax(220px, .58fr) minmax(0, 1fr); gap: 28px; align-items: start; margin-bottom: 22px; }
+    .sizing-head h3 { margin: 8px 0 0; font-size: clamp(24px, 3vw, 36px); line-height: 1.05; letter-spacing: -.035em; }
+    .sizing-head p { margin: 2px 0 0; color: var(--muted); }
+    .route-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
+    .route { padding: 21px; border: 1px solid var(--line); border-radius: 14px; background: rgba(0, 0, 0, .18); }
+    .route.compact { border-color: rgba(200, 245, 96, .34); background: rgba(200, 245, 96, .035); }
+    .route .route-label { color: var(--cyan); font: 700 11px/1.3 ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .1em; text-transform: uppercase; }
+    .route.compact .route-label { color: var(--lime); }
+    .route h4 { margin: 9px 0 7px; font-size: 19px; }
+    .route > p { margin: 0; color: var(--muted); font-size: 13px; }
+    .route-chain { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; margin-top: 17px; }
+    .route-chain span { padding: 6px 8px; border: 1px solid rgba(255, 255, 255, .1); border-radius: 7px; background: rgba(255, 255, 255, .035); font: 700 10px/1.25 ui-monospace, SFMono-Regular, Menlo, monospace; }
+    .route-chain i { color: var(--faint); font-style: normal; }
+    .route-note { margin-top: 17px; padding-top: 15px; border-top: 1px solid var(--line); color: var(--muted); font-size: 12px; }
+    .route-note strong { color: var(--ink); }
+
+    .phase-list { display: grid; gap: 12px; }
+    details.phase { overflow: hidden; }
+    details.phase > summary { position: relative; cursor: pointer; list-style: none; padding: 18px 58px 18px 22px; font-weight: 760; }
+    details.phase > summary::-webkit-details-marker { display: none; }
+    details.phase > summary::after { content: "+"; position: absolute; right: 22px; top: 13px; color: var(--lime); font: 400 28px/1 ui-monospace, SFMono-Regular, Menlo, monospace; }
+    details.phase[open] > summary::after { content: "−"; }
+    details.phase[open] > summary { border-bottom: 1px solid var(--line); }
+    .phase-title { display: flex; align-items: baseline; gap: 12px; }
+    .phase-title .num { color: var(--lime); font: 700 11px/1 ui-monospace, SFMono-Regular, Menlo, monospace; }
+    .phase-title small { color: var(--muted); font-weight: 500; }
+    .phase-body { display: grid; grid-template-columns: minmax(220px, .42fr) minmax(0, 1fr); }
+    .phase-summary, .phase-detail { padding: clamp(21px, 3vw, 34px); }
+    .phase-summary { border-right: 1px solid var(--line); }
+    .phase-summary h3 { margin: 8px 0 13px; font-size: 29px; line-height: 1.08; letter-spacing: -.03em; }
+    .phase-summary p { color: var(--muted); }
+    .owner { display: inline-flex; align-items: center; gap: 7px; margin-top: 10px; color: var(--lime); font: 700 11px/1 ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .08em; text-transform: uppercase; }
+    .owner::before { content: "●"; font-size: 8px; }
+    .steps { counter-reset: detail; display: grid; gap: 14px; }
+    .step { position: relative; padding: 0 0 15px 46px; border-bottom: 1px solid var(--line); }
+    .step:last-child { padding-bottom: 0; border-bottom: 0; }
+    .step::before { counter-increment: detail; content: counter(detail, decimal-leading-zero); position: absolute; left: 0; top: 2px; color: var(--cyan); font: 700 12px/1 ui-monospace, SFMono-Regular, Menlo, monospace; }
+    .step strong { display: block; margin-bottom: 5px; }
+    .step p { margin: 0; color: var(--muted); font-size: 13px; }
+
+    code { padding: .12em .35em; color: #e6f7b8; background: rgba(200, 245, 96, .08); border: 1px solid rgba(200, 245, 96, .14); border-radius: 5px; font: .9em/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; }
+    .tool-grid, .truth-grid, .two-col { display: grid; gap: 15px; }
+    .tool-grid { grid-template-columns: repeat(3, 1fr); }
+    .truth-grid { grid-template-columns: repeat(4, 1fr); }
+    .two-col { grid-template-columns: repeat(2, 1fr); }
+    .card { padding: 23px; }
+    .card h3 { margin: 8px 0 11px; font-size: 19px; }
+    .card p, .card li { color: var(--muted); font-size: 13px; }
+    .card ul { margin: 12px 0 0; padding-left: 18px; }
+    .card li + li { margin-top: 6px; }
+    .truth-card { min-height: 138px; padding: 20px; border-top: 3px solid var(--gold); }
+    .truth-card strong { display: block; margin-bottom: 8px; }
+    .truth-card span { color: var(--muted); font-size: 13px; }
+
+    .gate-line { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 20px; }
+    .spaced { margin-top: 16px; }
+    .gate-node { min-height: 118px; padding: 17px; border: 1px solid rgba(255, 130, 111, .35); border-radius: 12px; background: rgba(255, 130, 111, .045); }
+    .gate-node b { display: block; margin-bottom: 7px; color: var(--coral); }
+    .gate-node span { color: var(--muted); font-size: 12px; }
+    .command-list { display: grid; gap: 9px; }
+    .command { display: grid; grid-template-columns: minmax(180px, .48fr) 1fr; gap: 16px; padding: 13px 15px; border: 1px solid rgba(255, 255, 255, .06); border-radius: 10px; background: rgba(0, 0, 0, .22); }
+    .command code { align-self: start; overflow-wrap: anywhere; }
+    .command span { color: var(--muted); font-size: 12px; }
+
+    .policy { padding: clamp(26px, 5vw, 54px); display: grid; grid-template-columns: .65fr 1fr; gap: 34px; border-color: rgba(200, 245, 96, .32); }
+    .policy h2 { margin: 8px 0 0; font-size: 35px; letter-spacing: -.04em; }
+    .policy-list { display: grid; gap: 12px; }
+    .policy-item { display: grid; grid-template-columns: 30px 1fr; gap: 12px; color: var(--muted); }
+    .policy-item b { color: var(--lime); font: 700 12px/1.6 ui-monospace, SFMono-Regular, Menlo, monospace; }
+    footer { margin-top: 55px; padding: 30px 0 48px; color: var(--faint); border-top: 1px solid var(--line); font-size: 12px; }
+
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+    }
+
+    @media (max-width: 1050px) {
+      header, .section-head, .policy { grid-template-columns: 1fr; }
+      .flow { grid-template-columns: repeat(5, 220px); }
+      .truth-grid { grid-template-columns: repeat(2, 1fr); }
+      .tool-grid { grid-template-columns: repeat(2, 1fr); }
+      .gate-line { grid-template-columns: repeat(2, 1fr); }
+    }
+
+    @media (max-width: 760px) {
+      .shell { width: min(100% - 22px, var(--max)); }
+      .topbar-inner { align-items: flex-start; flex-direction: column; padding: 10px 0; }
+      nav { width: 100%; }
+      section { scroll-margin-top: 112px; }
+      header { padding-top: 55px; }
+      h1 { font-size: 50px; }
+      .stack-map { grid-template-columns: 1fr; }
+      .stack-label { min-height: 0; padding: 15px 19px; border-right: 0; }
+      .stack-content, .phase-body, .two-col, .truth-grid, .tool-grid, .policy { grid-template-columns: 1fr; }
+      .sizing-head, .route-grid { grid-template-columns: 1fr; }
+      .phase-summary { border-right: 0; border-bottom: 1px solid var(--line); }
+      .gate-line { grid-template-columns: 1fr; }
+      .command { grid-template-columns: 1fr; }
+      .phase-title { align-items: flex-start; flex-direction: column; gap: 6px; }
+    }
+
+    @media print {
+      :root { color-scheme: light; --ink: #111; --muted: #444; --paper: #fff; --panel: #fff; --panel-2: #f4f4ef; --line: #bbb; }
+      body { background: #fff; }
+      body::before, .topbar { display: none; }
+      .panel, .flow-step { box-shadow: none; break-inside: avoid; }
+      details.phase:not([open]) > .phase-body { display: grid !important; }
+      details.phase > summary::after { display: none; }
+      section { padding: 28px 0; }
+    }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <div class="shell topbar-inner">
+      <a class="brand" href="#top"><span class="brand-mark">SF</span> Software Factory Map</a>
+      <nav aria-label="Page sections">
+        <a href="#architecture">Architecture</a>
+        <a href="#lifecycle">Workflow</a>
+        <a href="#path">Code path</a>
+        <a href="#skills">Skills</a>
+        <a href="#evidence">Evidence</a>
+        <a href="#gates">Gates</a>
+        <a href="#boundaries">Boundaries</a>
+      </nav>
+    </div>
+  </div>
+
+  <main id="top" class="shell">
+    <header>
+      <div>
+        <div class="eyebrow">Personal codebase workflow / September 2026</div>
+        <h1>Code changes. Explicit authority.</h1>
+        <p class="lede">GitHub holds intent and work state. Worktrunk isolates each code change. Codex or Claude Code work inside the approved checkout. Project checks, independent review, Plannotator, and GitHub Actions provide evidence before a human merges.</p>
+      </div>
+      <aside class="north-star">
+        <strong>North star</strong>
+        <p>Every merged change is bounded, attributable, independently checked, and explicitly approved.</p>
+        <small>The workflow ends at merged code and a clean local state. Runtime delivery is outside this map.</small>
+      </aside>
+    </header>
+
+    <section id="architecture">
+      <div class="section-head">
+        <div><div class="kicker">01 / Architecture</div><h2>One narrow workflow</h2></div>
+        <p>The factory coordinates codebase work. GitHub and Git remain the durable record, while tools keep small, replaceable responsibilities.</p>
+      </div>
+      <div class="legend">
+        <span><i class="dot"></i> human authority</span>
+        <span><i class="dot truth"></i> durable truth</span>
+        <span><i class="dot local"></i> local execution</span>
+        <span><i class="dot gate"></i> verification gate</span>
+      </div>
+      <div class="panel stack-map">
+        <div class="stack-label">Authority<b>Who decides</b></div>
+        <div class="stack-content">
+          <div class="tool human"><strong>Human operator</strong><span>Approves intent, risk, elevated candidates, visual review, merge, exceptions, and destructive cleanup.</span></div>
+          <div class="tool truth"><strong>GitHub Issues + Projects</strong><span>Canonical intent, dependencies, assignment, Status, Risk, and discussion.</span></div>
+        </div>
+
+        <div class="stack-label">Preparation<b>How work becomes ready</b></div>
+        <div class="stack-content">
+          <div class="tool"><strong>Codex / Claude Code</strong><span>Clarify behavior, scope, exclusions, validation, and uncertainty when asked.</span></div>
+          <div class="tool truth"><strong>GitHub Issue</strong><span>Holds the approved change request and the evidence another session needs.</span></div>
+          <div class="tool"><strong>Worktrunk</strong><span>Creates one isolated exact-base worktree for the approved ticket.</span></div>
+        </div>
+
+        <div class="stack-label">Execution<b>Where code changes</b></div>
+        <div class="stack-content">
+          <div class="tool"><strong>Writable agent session</strong><span>Changes only the approved checkout and preserves user-owned work.</span></div>
+          <div class="tool truth"><strong>Git</strong><span>Records refs, diffs, commits, ancestry, and worktree state.</span></div>
+          <div class="tool gate"><strong>Project-native checks</strong><span>Formatting, linting, types, tests, build, and end-to-end behavior.</span></div>
+        </div>
+
+        <div class="stack-label">Assurance<b>Why code may merge</b></div>
+        <div class="stack-content">
+          <div class="tool gate"><strong>Independent code review</strong><span>Reviews an explicit fixed point, head commit, and changed-file set without editing.</span></div>
+          <div class="tool gate"><strong>GitHub Actions</strong><span>Runs required checks against the exact pull-request head.</span></div>
+          <div class="tool gate"><strong>Plannotator</strong><span>Provides optional visual feedback and the required final human diff review.</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="lifecycle">
+      <div class="section-head">
+        <div><div class="kicker">02 / Workflow</div><h2>Five states. Two risks.</h2></div>
+        <p>Status shows where attention is needed. Risk changes the approval and review depth without changing the delivery path.</p>
+      </div>
+
+      <div class="two-col">
+        <article class="panel card">
+          <div class="kicker">Status field</div>
+          <h3>One delivery signal</h3>
+          <p>Inbox, Ready, In Progress, In Review, and Done cover the code change from unclear request to merged result. Blocked or unclear work returns to Inbox.</p>
+        </article>
+        <article class="panel card">
+          <div class="kicker">Risk field</div>
+          <h3>Standard or Elevated</h3>
+          <p>Elevated covers security, identity, secrets, personal data, destructive migrations, public compatibility, or material uncertainty. Humans may raise risk; lowering it requires an explicit decision.</p>
+        </article>
+      </div>
+
+      <div class="kicker spaced">GitHub Project / Status</div>
+      <div class="flow">
+        <article class="flow-step"><span class="num">01</span><h3>Clarify</h3><p>Define expected code behavior, exclusions, validation, and risk. Unresolved work stays here.</p><span class="status">INBOX</span></article>
+        <article class="flow-step"><span class="num">02</span><h3>Prepare</h3><p>Intent is approved, scope is reviewable, validation is known, and blockers are resolved.</p><span class="status">READY</span></article>
+        <article class="flow-step"><span class="num">03</span><h3>Implement</h3><p>One owner changes and validates one isolated checkout against the approved outcome.</p><span class="status">IN PROGRESS</span></article>
+        <article class="flow-step"><span class="num">04</span><h3>Integrate</h3><p>The exact reviewed head is in a pull request and required checks are visible.</p><span class="status">IN REVIEW</span></article>
+        <article class="flow-step"><span class="num">05</span><h3>Complete</h3><p>The approved change is merged, the issue is closed, main is synchronized, and cleanup may proceed.</p><span class="status">DONE</span></article>
+      </div>
+
+      <div class="panel sizing">
+        <div class="sizing-head">
+          <div><div class="kicker">Planning depth</div><h3>Scale the ceremony, keep the controls.</h3></div>
+          <p>Ask one routing question: can one person implement and validate the approved change in one session, with no unresolved product, domain, or architecture decision?</p>
+        </div>
+        <div class="route-grid">
+          <article class="route compact">
+            <div class="route-label">Yes / small and clear</div>
+            <h4>Use the compact Standard path</h4>
+            <p>Example: change the primary button from blue to an approved purple token. Record the exact component, token or value, interactive states, affected views, and contrast expectation in one GitHub Issue.</p>
+            <div class="route-chain" role="img" aria-label="Compact workflow">
+              <span>GitHub Issue</span><i aria-hidden="true">→</i>
+              <span>Worktrunk</span><i aria-hidden="true">→</i>
+              <span>implement</span><i aria-hidden="true">→</i>
+              <span>project checks + visual QA</span><i aria-hidden="true">→</i>
+              <span>code-review</span><i aria-hidden="true">→</i>
+              <span>PR + Actions</span><i aria-hidden="true">→</i>
+              <span>plannotator-review</span><i aria-hidden="true">→</i>
+              <span>merge + cleanup</span>
+            </div>
+            <div class="route-note"><strong>Skip:</strong> <code>grill-me</code>, <code>to-spec</code>, and <code>to-tickets</code>. Add focused tests only when the change exposes a meaningful behavior seam.</div>
+          </article>
+          <article class="route">
+            <div class="route-label">No / unclear or multi-session</div>
+            <h4>Resolve decisions before delivery</h4>
+            <p>Use planning skills only for the complexity that exists. A PRD may be an input for product-heavy work, but the factory does not require one.</p>
+            <div class="route-chain" role="img" aria-label="Extended planning workflow">
+              <span>grill-me or grill-with-docs</span><i aria-hidden="true">→</i>
+              <span>to-spec</span><i aria-hidden="true">→</i>
+              <span>Plannotator annotate</span><i aria-hidden="true">→</i>
+              <span>to-tickets</span><i aria-hidden="true">→</i>
+              <span>one compact delivery path per ticket</span>
+            </div>
+            <div class="route-note"><strong>Working specification:</strong> use <code>to-spec</code> when accepted decisions must survive across sessions. Use <code>to-tickets</code> only when the approved outcome needs multiple implementation sessions.</div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section id="path">
+      <div class="section-head">
+        <div><div class="kicker">03 / Code path</div><h2>From request to clean main</h2></div>
+        <p>Open a phase for its owner, required evidence, and stopping condition. These are workflow instructions, not behavior embedded in reusable skills.</p>
+      </div>
+
+      <div class="phase-list">
+        <details class="panel phase" open>
+          <summary><span class="phase-title"><span class="num">01</span>Clarify <small>Inbox</small></span></summary>
+          <div class="phase-body">
+            <div class="phase-summary"><div class="kicker">Intent</div><h3>Define the code change</h3><p>State what should change without authorizing implementation.</p><span class="owner">Owner: human</span></div>
+            <div class="phase-detail"><div class="steps">
+              <div class="step"><strong>Describe observable behavior</strong><p>Capture the current behavior, expected behavior, affected interface, and smallest useful validation seam.</p></div>
+              <div class="step"><strong>Bound the work</strong><p>Name exclusions, blockers, uncertainty, and one reviewable outcome. Split cross-repository work into linked tickets.</p></div>
+              <div class="step"><strong>Assign risk</strong><p>Choose Standard or Elevated. Ambiguity defaults to Elevated until resolved.</p></div>
+            </div></div>
+          </div>
+        </details>
+
+        <details class="panel phase">
+          <summary><span class="phase-title"><span class="num">02</span>Prepare <small>Ready</small></span></summary>
+          <div class="phase-body">
+            <div class="phase-summary"><div class="kicker">Isolation</div><h3>Create a clean starting point</h3><p>Ready means another session can begin without inventing a product or workflow decision.</p><span class="owner">Owner: operator</span></div>
+            <div class="phase-detail"><div class="steps">
+              <div class="step"><strong>Verify readiness</strong><p>Confirm the open ticket, approved intent, Risk, validation seam, resolved blockers, and exact base commit.</p></div>
+              <div class="step"><strong>Create the worktree</strong><p>Run <code>wt switch --create &lt;branch&gt; --no-cd --no-hooks</code> from the intended repository.</p></div>
+              <div class="step"><strong>Run explicit setup</strong><p>Inspect repository instructions, then run the project-owned setup command visibly. Move to In Progress only after setup succeeds.</p></div>
+            </div></div>
+          </div>
+        </details>
+
+        <details class="panel phase">
+          <summary><span class="phase-title"><span class="num">03</span>Implement <small>In Progress</small></span></summary>
+          <div class="phase-body">
+            <div class="phase-summary"><div class="kicker">Construction</div><h3>Change the approved checkout</h3><p>Implementation follows repository instructions and stays inside the accepted outcome.</p><span class="owner">Owner: writable agent</span></div>
+            <div class="phase-detail"><div class="steps">
+              <div class="step"><strong>Establish the baseline</strong><p>Reproduce a bug through the closest user seam or demonstrate current behavior before adding new behavior.</p></div>
+              <div class="step"><strong>Work in vertical slices</strong><p>Add the fewest crucial behavior tests, implement the smallest robust change, and keep cleanup behavior-preserving.</p></div>
+              <div class="step"><strong>Validate completely</strong><p>Run project-native formatting, linting, types, focused tests, build, end-to-end checks, and the complete suite when available.</p></div>
+              <div class="step"><strong>Commit by risk</strong><p>Standard work may commit under approved policy. Elevated work stops for human approval of the exact candidate and message.</p></div>
+            </div></div>
+          </div>
+        </details>
+
+        <details class="panel phase">
+          <summary><span class="phase-title"><span class="num">04</span>Review <small>In Progress</small></span></summary>
+          <div class="phase-body">
+            <div class="phase-summary"><div class="kicker">Independent assurance</div><h3>Review without editing</h3><p>The reviewer receives an explicit boundary rather than inferring workflow state from a reusable skill.</p><span class="owner">Owner: read-only reviewer</span></div>
+            <div class="phase-detail"><div class="steps">
+              <div class="step"><strong>Prove the boundary</strong><p>Record the original fixed point, reviewed head, comparison reference, and complete changed-file set.</p></div>
+              <div class="step"><strong>Inspect sequentially</strong><p>Review correctness, security, accepted intent, maintainability, and validation evidence.</p></div>
+              <div class="step"><strong>Handle findings</strong><p>Return a precise rework packet. Scope ambiguity returns to Inbox; accepted corrections return to Ready.</p></div>
+              <div class="step"><strong>Apply elevated review</strong><p>Use a different model, tool, or specialist. A missing independent reviewer requires a recorded human exception.</p></div>
+            </div></div>
+          </div>
+        </details>
+
+        <details class="panel phase">
+          <summary><span class="phase-title"><span class="num">05</span>Integrate <small>In Review</small></span></summary>
+          <div class="phase-body">
+            <div class="phase-summary"><div class="kicker">Publication + merge</div><h3>Merge the reviewed bytes</h3><p>The pull request must preserve the reviewed head and expose all required evidence.</p><span class="owner">Owner: human + GitHub</span></div>
+            <div class="phase-detail"><div class="steps">
+              <div class="step"><strong>Publish the exact head</strong><p>Standard work may push and open the pull request under policy. Elevated work requires publication approval.</p></div>
+              <div class="step"><strong>Require exact-head checks</strong><p>Wait for required GitHub Actions and invalidate the review if the head changes.</p></div>
+              <div class="step"><strong>Review visually</strong><p>Use Plannotator on the CI-passing head and verify its base, head, and file set before accepting feedback or approval.</p></div>
+              <div class="step"><strong>Approve merge</strong><p>Merge only the reviewed candidate. Rulesets block direct default-branch changes, failed checks, force pushes, and deletion.</p></div>
+            </div></div>
+          </div>
+        </details>
+
+        <details class="panel phase">
+          <summary><span class="phase-title"><span class="num">06</span>Maintain <small>Done</small></span></summary>
+          <div class="phase-body">
+            <div class="phase-summary"><div class="kicker">Closure</div><h3>Verify, synchronize, clean</h3><p>Completion leaves the default branch correct and local state understandable.</p><span class="owner">Owner: human operator</span></div>
+            <div class="phase-detail"><div class="steps">
+              <div class="step"><strong>Verify completion</strong><p>Confirm the pull request merged, the issue closed, the Project item reached Done, and required checks passed.</p></div>
+              <div class="step"><strong>Synchronize main</strong><p>Require a clean primary checkout, fetch, fast-forward only, and verify local and remote default-branch object IDs match.</p></div>
+              <div class="step"><strong>Recheck the merged result</strong><p>Run the crucial project-native verification on main and preserve evidence of the result.</p></div>
+              <div class="step"><strong>Approve cleanup</strong><p>Inspect branch and worktree identity, cleanliness, and unpushed state before any removal.</p></div>
+            </div></div>
+          </div>
+        </details>
+      </div>
+    </section>
+
+    <section id="skills">
+      <div class="section-head">
+        <div><div class="kicker">04 / Reusable skills</div><h2>Tools, not a control plane</h2></div>
+        <p>Skills provide portable behavior. They accept explicit context and remain independent of this Project board, its statuses, Worktrunk, and its approval sequence.</p>
+      </div>
+      <div class="tool-grid">
+        <article class="panel card"><div class="kicker">Communication</div><h3><code>focused-output</code></h3><p>Produces concise, direct communication without owning workflow state.</p></article>
+        <article class="panel card"><div class="kicker">Planning</div><h3><code>grill-me</code></h3><p>Challenges an idea until its actors, outcomes, constraints, and exclusions are clear.</p></article>
+        <article class="panel card"><div class="kicker">Planning</div><h3><code>grill-with-docs</code></h3><p>Loads relevant project vocabulary before applying the grilling workflow.</p></article>
+        <article class="panel card"><div class="kicker">Planning core</div><h3><code>grilling</code></h3><p>Provides the question-driven design-tree behavior used by planning entries.</p></article>
+        <article class="panel card"><div class="kicker">Language</div><h3><code>domain-modeling</code></h3><p>Sharpens project terminology and records durable decisions only when justified.</p></article>
+        <article class="panel card"><div class="kicker">Specification</div><h3><code>to-spec</code></h3><p>Turns approved multi-session intent into a disposable working specification. Small one-session changes skip it.</p></article>
+        <article class="panel card"><div class="kicker">Packaging</div><h3><code>to-tickets</code></h3><p>Drafts bounded tickets and dependency information without changing Project state.</p></article>
+        <article class="panel card"><div class="kicker">Construction</div><h3><code>implement</code></h3><p>Changes and validates an approved task in the current checkout supplied by the caller.</p></article>
+        <article class="panel card"><div class="kicker">Construction</div><h3><code>tdd</code></h3><p>Guides focused test-first work at explicitly supplied observable seams.</p></article>
+        <article class="panel card"><div class="kicker">Assurance</div><h3><code>code-review</code></h3><p>Reviews a supplied diff boundary for correctness, security, intent, and maintainability.</p></article>
+        <article class="panel card"><div class="kicker">Plan review</div><h3><code>Plannotator annotate</code></h3><p>Reviews a materialized working specification before ticket breakdown. It is unnecessary when one approved issue is sufficient.</p></article>
+        <article class="panel card"><div class="kicker">Code review</div><h3><code>plannotator-review</code></h3><p>Opens the exact CI-passing code diff for final human inspection. It does not review plans or specifications.</p></article>
+      </div>
+    </section>
+
+    <section id="evidence">
+      <div class="section-head">
+        <div><div class="kicker">05 / Evidence</div><h2>Truth stays near the fact</h2></div>
+        <p>The factory links authoritative evidence instead of copying it into another database.</p>
+      </div>
+      <div class="truth-grid">
+        <div class="panel truth-card"><strong>Accepted intent</strong><span>GitHub Issue discussion and explicitly approved behavior.</span></div>
+        <div class="panel truth-card"><strong>Work state</strong><span>GitHub Project Status, Risk, issue assignee, and native blockers.</span></div>
+        <div class="panel truth-card"><strong>Implemented behavior</strong><span>Code, public interfaces, observable tests, and approved decision records.</span></div>
+        <div class="panel truth-card"><strong>Active checkout</strong><span>One Git branch and isolated Worktrunk worktree per ticket.</span></div>
+        <div class="panel truth-card"><strong>Review boundary</strong><span>Original fixed point, reviewed head, comparison ref, and changed-file set.</span></div>
+        <div class="panel truth-card"><strong>Local quality</strong><span>Project-native formatting, linting, types, tests, build, and end-to-end result.</span></div>
+        <div class="panel truth-card"><strong>Remote quality</strong><span>Required GitHub Actions attached to the exact pull-request head.</span></div>
+        <div class="panel truth-card"><strong>Human decision</strong><span>Plannotator result, merge approval, exceptions, and cleanup approval.</span></div>
+      </div>
+    </section>
+
+    <section id="gates">
+      <div class="section-head">
+        <div><div class="kicker">06 / Human gates</div><h2>Approval follows consequence</h2></div>
+        <p>Routine Standard actions may proceed within approved scope. Consequential, elevated, exceptional, and destructive actions stop for the human.</p>
+      </div>
+      <div class="gate-line">
+        <div class="gate-node"><b>Gate 1</b><span>Approve intent, Risk, validation seam, scope, and any durable decision.</span></div>
+        <div class="gate-node"><b>Gate 2</b><span>For Elevated work, approve the exact candidate and later its publication.</span></div>
+        <div class="gate-node"><b>Gate 3</b><span>Approve the exact CI-passing diff in Plannotator, then approve merge.</span></div>
+        <div class="gate-node"><b>Gate 4</b><span>Approve exceptions and destructive branch or worktree cleanup.</span></div>
+      </div>
+      <div class="two-col spaced">
+        <article class="panel card">
+          <div class="kicker">Direct operator seams</div><h3>Commands stay visible</h3>
+          <div class="command-list">
+            <div class="command"><code>gh issue / project / pr</code><span>Read and update GitHub only within the approved change.</span></div>
+            <div class="command"><code>wt switch --create ...</code><span>Create the approved exact-base worktree with hooks disabled.</span></div>
+            <div class="command"><code>project setup + checks</code><span>Run repository-owned setup, formatting, linting, types, tests, build, and end-to-end commands.</span></div>
+            <div class="command"><code>git status / diff / merge-base</code><span>Inspect cleanliness, changed bytes, ancestry, and review boundaries.</span></div>
+            <div class="command"><code>gh pr checks / merge</code><span>Verify the exact head and merge only the approved candidate.</span></div>
+          </div>
+        </article>
+        <article class="panel card">
+          <div class="kicker">Parallel work</div><h3>Only after explicit approval</h3>
+          <p>Parallel execution begins only for a fixed set of independent tickets. Each retains its own branch, worktree, owner, validation, review, and merge decision.</p>
+          <ul>
+            <li>Record one exact starting commit for the approved wave.</li>
+            <li>Exclude overlapping interfaces, schemas, migrations, generated files, and shared release state.</li>
+            <li>Stop on new coupling, conflicts, ambiguity, or failed checks.</li>
+            <li>Merge sequentially unless another method is explicitly approved.</li>
+          </ul>
+        </article>
+      </div>
+    </section>
+
+    <section id="boundaries">
+      <div class="panel policy">
+        <div><div class="kicker">V1 boundaries</div><h2>Keep the factory about code.</h2></div>
+        <div class="policy-list">
+          <div class="policy-item"><b>01</b><span>The workflow ends after merge verification, main synchronization, and approved local cleanup.</span></div>
+          <div class="policy-item"><b>02</b><span>Reusable skills do not own Project statuses, worktree creation, approval order, or orchestration.</span></div>
+          <div class="policy-item"><b>03</b><span>No factory daemon, scheduler, database, wrapper CLI, automatic merger, or coordinating skill.</span></div>
+          <div class="policy-item"><b>04</b><span>Untrusted issue, pull-request, skill, and review content never grants permission or changes scope.</span></div>
+          <div class="policy-item"><b>05</b><span>Uncertain state is inspected, never forced. Dirty worktrees and divergent histories remain intact until understood.</span></div>
+          <div class="policy-item"><b>06</b><span>V1 supports one expert operator on macOS, local agents, and GitHub.com.</span></div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="shell">Software Factory Mental Map · focused code changes · isolated worktrees · workflow-agnostic skills · independent review · explicit human gates</div>
+  </footer>
+</body>
+</html>

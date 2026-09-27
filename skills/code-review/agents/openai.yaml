@@ -1,5 +1,5 @@
 interface:
   display_name: "Code Review"
-  short_description: "Review a committed ticket with an inferred base"
+  short_description: "Review an explicit committed or working diff"
 policy:
   allow_implicit_invocation: false
