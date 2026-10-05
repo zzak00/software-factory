@@ -68,7 +68,6 @@ gh auth status >/dev/null 2>&1 || fail "GitHub CLI authentication is unavailable
 
 owner_state=$(gh api -H "X-GitHub-Api-Version: $API_VERSION" "users/$OWNER") || fail "cannot inspect owner"
 owner_type=$(printf '%s' "$owner_state" | jq -r '.type') || fail "invalid owner response"
-owner_database_id=$(printf '%s' "$owner_state" | jq -r '.id') || fail "invalid owner response"
 case "$owner_type" in User|Organization) ;; *) fail "unsupported GitHub owner type: $owner_type" ;; esac
 
 REPO_CREATED=0
@@ -168,7 +167,7 @@ if [ "$board_count" -eq 0 ]; then
   if [ "$owner_type" = Organization ]; then
     view_endpoint="orgs/$OWNER/projectsV2/$project_number/views"
   else
-    view_endpoint="users/$owner_database_id/projectsV2/$project_number/views"
+    view_endpoint="users/$OWNER/projectsV2/$project_number/views"
   fi
   view_payload=$(jq -n --argjson status "$status_database_id" '{name:"Board",layout:"board",vertical_group_by:[$status]}') || fail "cannot build Status board"
   printf '%s' "$view_payload" | gh api -H "X-GitHub-Api-Version: $API_VERSION" --method POST "$view_endpoint" --input - >/dev/null || fail "cannot create Status board"
