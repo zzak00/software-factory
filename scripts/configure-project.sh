@@ -149,7 +149,7 @@ fi
 
 # GraphQL variables are intentionally literal here.
 # shellcheck disable=SC2016
-project_query='query($id: ID!) { node(id: $id) { ... on ProjectV2 { repositories(first: 100) { nodes { nameWithOwner } } fields(first: 100) { nodes { ... on ProjectV2SingleSelectField { databaseId name } } } views(first: 100) { nodes { id name layout groupByFields(first: 10) { nodes { ... on ProjectV2Field { name } ... on ProjectV2SingleSelectField { name } } } } } } } }'
+project_query='query($id: ID!) { node(id: $id) { ... on ProjectV2 { repositories(first: 100) { nodes { nameWithOwner } } fields(first: 100) { nodes { ... on ProjectV2SingleSelectField { databaseId name } } } views(first: 100) { nodes { id name layout verticalGroupByFields(first: 10) { nodes { ... on ProjectV2Field { name } ... on ProjectV2SingleSelectField { name } } } } } } } }'
 project_state=$(gh api graphql -f query="$project_query" -F id="$project_id") || fail "cannot inspect Project views and links"
 linked=$(printf '%s' "$project_state" | jq --arg repo "$OWNER/$REPOSITORY" '[.data.node.repositories.nodes[] | select(.nameWithOwner == $repo)] | length')
 [ "$linked" -le 1 ] || fail "repository is linked to Project more than once"
@@ -160,7 +160,7 @@ if [ "$linked" -eq 0 ]; then
 fi
 [ "$linked" -eq 1 ] || fail "repository was not linked to Project"
 
-board_count=$(printf '%s' "$project_state" | jq '[.data.node.views.nodes[] | select(.layout == "BOARD" and any(.groupByFields.nodes[]?; .name == "Status"))] | length')
+board_count=$(printf '%s' "$project_state" | jq '[.data.node.views.nodes[] | select(.layout == "BOARD_LAYOUT" and any(.verticalGroupByFields.nodes[]?; .name == "Status"))] | length')
 if [ "$board_count" -eq 0 ]; then
   status_database_id=$(printf '%s' "$project_state" | jq -r '.data.node.fields.nodes[] | select(.name == "Status") | .databaseId')
   [ -n "$status_database_id" ] && [ "$status_database_id" != null ] || fail "cannot resolve Status database ID"
@@ -172,7 +172,7 @@ if [ "$board_count" -eq 0 ]; then
   view_payload=$(jq -n --argjson status "$status_database_id" '{name:"Board",layout:"board",vertical_group_by:[$status]}') || fail "cannot build Status board"
   printf '%s' "$view_payload" | gh api -H "X-GitHub-Api-Version: $API_VERSION" --method POST "$view_endpoint" --input - >/dev/null || fail "cannot create Status board"
   project_state=$(gh api graphql -f query="$project_query" -F id="$project_id") || fail "cannot verify Status board"
-  board_count=$(printf '%s' "$project_state" | jq '[.data.node.views.nodes[] | select(.layout == "BOARD" and any(.groupByFields.nodes[]?; .name == "Status"))] | length')
+  board_count=$(printf '%s' "$project_state" | jq '[.data.node.views.nodes[] | select(.layout == "BOARD_LAYOUT" and any(.verticalGroupByFields.nodes[]?; .name == "Status"))] | length')
 fi
 [ "$board_count" -ge 1 ] || fail "Project has no Board view grouped by Status"
 

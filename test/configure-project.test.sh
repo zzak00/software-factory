@@ -57,7 +57,7 @@ case "$1 $2" in
     if [ "${GH_TEST_MODE:-ok}" = no-board ] && ! grep -Eq 'POST (users|orgs)/test/projectsV2/7/views' "$GH_TEST_LOG"; then
       printf '%s\n' '{"data":{"node":{"repositories":{"nodes":[{"nameWithOwner":"test/project"}]},"fields":{"nodes":[{"databaseId":5,"name":"Status"}]},"views":{"nodes":[]}}}}'
     else
-      printf '%s\n' '{"data":{"node":{"repositories":{"nodes":[{"nameWithOwner":"test/project"}]},"fields":{"nodes":[{"databaseId":5,"name":"Status"}]},"views":{"nodes":[{"id":"view","name":"Board","layout":"BOARD","groupByFields":{"nodes":[{"name":"Status"}]}}]}}}}'
+      printf '%s\n' '{"data":{"node":{"repositories":{"nodes":[{"nameWithOwner":"test/project"}]},"fields":{"nodes":[{"databaseId":5,"name":"Status"}]},"views":{"nodes":[{"id":"view","name":"Board","layout":"BOARD_LAYOUT","verticalGroupByFields":{"nodes":[{"name":"Status"}]}}]}}}}'
     fi
     ;;
   "api repos/test/project/rulesets") printf '%s\n' '[{"id":9,"name":"software-factory-development"}]' ;;
