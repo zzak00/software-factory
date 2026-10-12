@@ -54,7 +54,7 @@ printf '%s\n' \
   "Risk: Standard, Elevated" \
   "View: Board grouped by Status" \
   "CI: preserve existing workflows or add .github/workflows/ci.yml" \
-  "Ruleset: pull requests, no deletion, no force pushes, required check '$REQUIRED_CHECK'" \
+  "Ruleset: protect the default branch and main; require pull requests and '$REQUIRED_CHECK'; prevent deletion and force pushes" \
   "Excluded: deployments, environments, secrets, production, monitoring"
 
 [ "$APPLY" -eq 1 ] || {
@@ -121,6 +121,7 @@ fi
 rulesets=$(gh api -H "X-GitHub-Api-Version: $API_VERSION" "repos/$OWNER/$REPOSITORY/rulesets") || fail "cannot inspect repository rulesets"
 ruleset_count=$(printf '%s' "$rulesets" | jq '[.[] | select(.name == "software-factory-development")] | length')
 [ "$ruleset_count" -le 1 ] || fail "multiple factory rulesets exist"
+RULESET_NEEDS_MAIN=0
 if [ "$ruleset_count" -eq 1 ]; then
   existing_ruleset_id=$(printf '%s' "$rulesets" | jq -r '.[] | select(.name == "software-factory-development") | .id')
   existing_ruleset=$(gh api -H "X-GitHub-Api-Version: $API_VERSION" "repos/$OWNER/$REPOSITORY/rulesets/$existing_ruleset_id") || fail "cannot inspect factory ruleset"
@@ -131,6 +132,9 @@ if [ "$ruleset_count" -eq 1 ]; then
     (any(.rules[]; .type == "pull_request" and .parameters.required_approving_review_count == 0)) and
     (any(.rules[]; .type == "required_status_checks" and any(.parameters.required_status_checks[]; .context == $check)))
   ' >/dev/null || fail "existing factory ruleset conflicts"
+  if ! printf '%s' "$existing_ruleset" | jq -e '.conditions.ref_name.include | contains(["refs/heads/main"])' >/dev/null; then
+    RULESET_NEEDS_MAIN=1
+  fi
 fi
 
 project_visibility=$(printf '%s' "$VISIBILITY" | tr '[:lower:]' '[:upper:]')
@@ -202,8 +206,14 @@ EOF
 fi
 
 if [ "$ruleset_count" -eq 0 ]; then
-  ruleset=$(jq -n --arg check "$REQUIRED_CHECK" '{name:"software-factory-development",target:"branch",enforcement:"active",conditions:{ref_name:{include:["~DEFAULT_BRANCH"],exclude:[]}},rules:[{type:"deletion"},{type:"non_fast_forward"},{type:"pull_request",parameters:{dismiss_stale_reviews_on_push:true,require_code_owner_review:false,require_last_push_approval:false,required_approving_review_count:0,required_review_thread_resolution:true}},{type:"required_status_checks",parameters:{required_status_checks:[{context:$check}],strict_required_status_checks_policy:true,do_not_enforce_on_create:true}}]}') || fail "cannot build ruleset"
+  ruleset=$(jq -n --arg check "$REQUIRED_CHECK" '{name:"software-factory-development",target:"branch",enforcement:"active",conditions:{ref_name:{include:["~DEFAULT_BRANCH","refs/heads/main"],exclude:[]}},rules:[{type:"deletion"},{type:"non_fast_forward"},{type:"pull_request",parameters:{dismiss_stale_reviews_on_push:true,require_code_owner_review:false,require_last_push_approval:false,required_approving_review_count:0,required_review_thread_resolution:true}},{type:"required_status_checks",parameters:{required_status_checks:[{context:$check}],strict_required_status_checks_policy:true,do_not_enforce_on_create:true}}]}') || fail "cannot build ruleset"
   printf '%s' "$ruleset" | gh api -H "X-GitHub-Api-Version: $API_VERSION" --method POST "repos/$OWNER/$REPOSITORY/rulesets" --input - >/dev/null || fail "cannot create ruleset"
+elif [ "$RULESET_NEEDS_MAIN" -eq 1 ]; then
+  ruleset=$(printf '%s' "$existing_ruleset" | jq '
+    .conditions.ref_name.include |= (. + ["refs/heads/main"] | unique) |
+    {name, enforcement, bypass_actors: (.bypass_actors // []), conditions, rules}
+  ') || fail "cannot build ruleset update"
+  printf '%s' "$ruleset" | gh api -H "X-GitHub-Api-Version: $API_VERSION" --method PUT "repos/$OWNER/$REPOSITORY/rulesets/$existing_ruleset_id" --input - >/dev/null || fail "cannot add main to factory ruleset"
 fi
 
 workflows=$(gh api -H "X-GitHub-Api-Version: $API_VERSION" "repos/$OWNER/$REPOSITORY/actions/workflows?per_page=100") || fail "cannot verify repository workflows"
@@ -216,7 +226,7 @@ ruleset_id=$(printf '%s' "$rulesets" | jq -r '.[] | select(.name == "software-fa
 ruleset_state=$(gh api -H "X-GitHub-Api-Version: $API_VERSION" "repos/$OWNER/$REPOSITORY/rulesets/$ruleset_id") || fail "cannot verify factory ruleset"
 printf '%s' "$ruleset_state" | jq -e --arg check "$REQUIRED_CHECK" '
   .enforcement == "active" and
-  (.conditions.ref_name.include | contains(["~DEFAULT_BRANCH"])) and
+  (.conditions.ref_name.include | contains(["~DEFAULT_BRANCH", "refs/heads/main"])) and
   ([.rules[].type] | contains(["deletion", "non_fast_forward", "pull_request", "required_status_checks"])) and
   (any(.rules[]; .type == "pull_request" and .parameters.required_approving_review_count == 0)) and
   (any(.rules[]; .type == "required_status_checks" and any(.parameters.required_status_checks[]; .context == $check)))

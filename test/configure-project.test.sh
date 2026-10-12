@@ -61,10 +61,18 @@ case "$1 $2" in
     fi
     ;;
   "api repos/test/project/rulesets") printf '%s\n' '[{"id":9,"name":"software-factory-development"}]' ;;
-  "api repos/test/project/rulesets/9") printf '%s\n' '{"enforcement":"active","conditions":{"ref_name":{"include":["~DEFAULT_BRANCH"]}},"rules":[{"type":"deletion"},{"type":"non_fast_forward"},{"type":"pull_request","parameters":{"required_approving_review_count":0}},{"type":"required_status_checks","parameters":{"required_status_checks":[{"context":"CI / verify"}]}}]}' ;;
+  "api repos/test/project/rulesets/9")
+    if [ "${GH_TEST_MODE:-ok}" = legacy-ruleset ] && ! grep -q 'PUT repos/test/project/rulesets/9' "$GH_TEST_LOG"; then
+      includes='["~DEFAULT_BRANCH"]'
+    else
+      includes='["~DEFAULT_BRANCH","refs/heads/main"]'
+    fi
+    printf '{"name":"software-factory-development","enforcement":"active","conditions":{"ref_name":{"include":%s}},"rules":[{"type":"deletion"},{"type":"non_fast_forward"},{"type":"pull_request","parameters":{"required_approving_review_count":0}},{"type":"required_status_checks","parameters":{"required_status_checks":[{"context":"CI / verify"}]}}]}\n' "$includes"
+    ;;
   "api --method")
     case "$*" in
       *"PUT repos/test/project/contents/.github/workflows/ci.yml"*) exit 0 ;;
+      *"PUT repos/test/project/rulesets/9"*) exit 0 ;;
       *"POST users/test/projectsV2/7/views"*) exit 0 ;;
       *"POST orgs/test/projectsV2/7/views"*) exit 0 ;;
       *) printf 'unexpected mutating API call: %s\n' "$*" >&2; exit 90 ;;
@@ -98,6 +106,10 @@ grep -q 'POST users/test/projectsV2/7/views' "$LOG" || fail "user-owned Status b
 : > "$LOG"
 PATH="$FAKE_BIN:$PATH" GH_TEST_LOG="$LOG" GH_TEST_MODE=no-board GH_TEST_OWNER_TYPE=Organization "$CONFIGURE" --owner test --repo project --project-title Development --apply >/dev/null
 grep -q 'POST orgs/test/projectsV2/7/views' "$LOG" || fail "organization-owned Status board used the wrong endpoint"
+
+: > "$LOG"
+PATH="$FAKE_BIN:$PATH" GH_TEST_LOG="$LOG" GH_TEST_MODE=legacy-ruleset "$CONFIGURE" --owner test --repo project --project-title Development --apply >/dev/null
+grep -q 'PUT repos/test/project/rulesets/9' "$LOG" || fail "legacy factory ruleset was not updated to protect main"
 
 : > "$LOG"
 set +e
