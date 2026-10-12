@@ -54,7 +54,7 @@ printf '%s\n' \
   "Risk: Standard, Elevated" \
   "View: Board grouped by Status" \
   "CI: preserve existing workflows or add .github/workflows/ci.yml" \
-  "Ruleset: pull requests, no deletion, no force pushes, required check '$REQUIRED_CHECK'" \
+  "Ruleset: protect the default branch and main; require pull requests and '$REQUIRED_CHECK'; prevent deletion and force pushes" \
   "Excluded: deployments, environments, secrets, production, monitoring"
 
 [ "$APPLY" -eq 1 ] || {
@@ -68,7 +68,6 @@ gh auth status >/dev/null 2>&1 || fail "GitHub CLI authentication is unavailable
 
 owner_state=$(gh api -H "X-GitHub-Api-Version: $API_VERSION" "users/$OWNER") || fail "cannot inspect owner"
 owner_type=$(printf '%s' "$owner_state" | jq -r '.type') || fail "invalid owner response"
-owner_database_id=$(printf '%s' "$owner_state" | jq -r '.id') || fail "invalid owner response"
 case "$owner_type" in User|Organization) ;; *) fail "unsupported GitHub owner type: $owner_type" ;; esac
 
 REPO_CREATED=0
@@ -122,6 +121,7 @@ fi
 rulesets=$(gh api -H "X-GitHub-Api-Version: $API_VERSION" "repos/$OWNER/$REPOSITORY/rulesets") || fail "cannot inspect repository rulesets"
 ruleset_count=$(printf '%s' "$rulesets" | jq '[.[] | select(.name == "software-factory-development")] | length')
 [ "$ruleset_count" -le 1 ] || fail "multiple factory rulesets exist"
+RULESET_NEEDS_MAIN=0
 if [ "$ruleset_count" -eq 1 ]; then
   existing_ruleset_id=$(printf '%s' "$rulesets" | jq -r '.[] | select(.name == "software-factory-development") | .id')
   existing_ruleset=$(gh api -H "X-GitHub-Api-Version: $API_VERSION" "repos/$OWNER/$REPOSITORY/rulesets/$existing_ruleset_id") || fail "cannot inspect factory ruleset"
@@ -132,6 +132,9 @@ if [ "$ruleset_count" -eq 1 ]; then
     (any(.rules[]; .type == "pull_request" and .parameters.required_approving_review_count == 0)) and
     (any(.rules[]; .type == "required_status_checks" and any(.parameters.required_status_checks[]; .context == $check)))
   ' >/dev/null || fail "existing factory ruleset conflicts"
+  if ! printf '%s' "$existing_ruleset" | jq -e '.conditions.ref_name.include | contains(["refs/heads/main"])' >/dev/null; then
+    RULESET_NEEDS_MAIN=1
+  fi
 fi
 
 project_visibility=$(printf '%s' "$VISIBILITY" | tr '[:lower:]' '[:upper:]')
@@ -150,7 +153,7 @@ fi
 
 # GraphQL variables are intentionally literal here.
 # shellcheck disable=SC2016
-project_query='query($id: ID!) { node(id: $id) { ... on ProjectV2 { repositories(first: 100) { nodes { nameWithOwner } } fields(first: 100) { nodes { ... on ProjectV2SingleSelectField { databaseId name } } } views(first: 100) { nodes { id name layout groupByFields(first: 10) { nodes { ... on ProjectV2Field { name } ... on ProjectV2SingleSelectField { name } } } } } } } }'
+project_query='query($id: ID!) { node(id: $id) { ... on ProjectV2 { repositories(first: 100) { nodes { nameWithOwner } } fields(first: 100) { nodes { ... on ProjectV2SingleSelectField { databaseId name } } } views(first: 100) { nodes { id name layout verticalGroupByFields(first: 10) { nodes { ... on ProjectV2Field { name } ... on ProjectV2SingleSelectField { name } } } } } } } }'
 project_state=$(gh api graphql -f query="$project_query" -F id="$project_id") || fail "cannot inspect Project views and links"
 linked=$(printf '%s' "$project_state" | jq --arg repo "$OWNER/$REPOSITORY" '[.data.node.repositories.nodes[] | select(.nameWithOwner == $repo)] | length')
 [ "$linked" -le 1 ] || fail "repository is linked to Project more than once"
@@ -161,19 +164,19 @@ if [ "$linked" -eq 0 ]; then
 fi
 [ "$linked" -eq 1 ] || fail "repository was not linked to Project"
 
-board_count=$(printf '%s' "$project_state" | jq '[.data.node.views.nodes[] | select(.layout == "BOARD" and any(.groupByFields.nodes[]?; .name == "Status"))] | length')
+board_count=$(printf '%s' "$project_state" | jq '[.data.node.views.nodes[] | select(.layout == "BOARD_LAYOUT" and any(.verticalGroupByFields.nodes[]?; .name == "Status"))] | length')
 if [ "$board_count" -eq 0 ]; then
   status_database_id=$(printf '%s' "$project_state" | jq -r '.data.node.fields.nodes[] | select(.name == "Status") | .databaseId')
   [ -n "$status_database_id" ] && [ "$status_database_id" != null ] || fail "cannot resolve Status database ID"
   if [ "$owner_type" = Organization ]; then
     view_endpoint="orgs/$OWNER/projectsV2/$project_number/views"
   else
-    view_endpoint="users/$owner_database_id/projectsV2/$project_number/views"
+    view_endpoint="users/$OWNER/projectsV2/$project_number/views"
   fi
   view_payload=$(jq -n --argjson status "$status_database_id" '{name:"Board",layout:"board",vertical_group_by:[$status]}') || fail "cannot build Status board"
   printf '%s' "$view_payload" | gh api -H "X-GitHub-Api-Version: $API_VERSION" --method POST "$view_endpoint" --input - >/dev/null || fail "cannot create Status board"
   project_state=$(gh api graphql -f query="$project_query" -F id="$project_id") || fail "cannot verify Status board"
-  board_count=$(printf '%s' "$project_state" | jq '[.data.node.views.nodes[] | select(.layout == "BOARD" and any(.groupByFields.nodes[]?; .name == "Status"))] | length')
+  board_count=$(printf '%s' "$project_state" | jq '[.data.node.views.nodes[] | select(.layout == "BOARD_LAYOUT" and any(.verticalGroupByFields.nodes[]?; .name == "Status"))] | length')
 fi
 [ "$board_count" -ge 1 ] || fail "Project has no Board view grouped by Status"
 
@@ -203,8 +206,14 @@ EOF
 fi
 
 if [ "$ruleset_count" -eq 0 ]; then
-  ruleset=$(jq -n --arg check "$REQUIRED_CHECK" '{name:"software-factory-development",target:"branch",enforcement:"active",conditions:{ref_name:{include:["~DEFAULT_BRANCH"],exclude:[]}},rules:[{type:"deletion"},{type:"non_fast_forward"},{type:"pull_request",parameters:{dismiss_stale_reviews_on_push:true,require_code_owner_review:false,require_last_push_approval:false,required_approving_review_count:0,required_review_thread_resolution:true}},{type:"required_status_checks",parameters:{required_status_checks:[{context:$check}],strict_required_status_checks_policy:true,do_not_enforce_on_create:true}}]}') || fail "cannot build ruleset"
+  ruleset=$(jq -n --arg check "$REQUIRED_CHECK" '{name:"software-factory-development",target:"branch",enforcement:"active",conditions:{ref_name:{include:["~DEFAULT_BRANCH","refs/heads/main"],exclude:[]}},rules:[{type:"deletion"},{type:"non_fast_forward"},{type:"pull_request",parameters:{dismiss_stale_reviews_on_push:true,require_code_owner_review:false,require_last_push_approval:false,required_approving_review_count:0,required_review_thread_resolution:true}},{type:"required_status_checks",parameters:{required_status_checks:[{context:$check}],strict_required_status_checks_policy:true,do_not_enforce_on_create:true}}]}') || fail "cannot build ruleset"
   printf '%s' "$ruleset" | gh api -H "X-GitHub-Api-Version: $API_VERSION" --method POST "repos/$OWNER/$REPOSITORY/rulesets" --input - >/dev/null || fail "cannot create ruleset"
+elif [ "$RULESET_NEEDS_MAIN" -eq 1 ]; then
+  ruleset=$(printf '%s' "$existing_ruleset" | jq '
+    .conditions.ref_name.include |= (. + ["refs/heads/main"] | unique) |
+    {name, enforcement, bypass_actors: (.bypass_actors // []), conditions, rules}
+  ') || fail "cannot build ruleset update"
+  printf '%s' "$ruleset" | gh api -H "X-GitHub-Api-Version: $API_VERSION" --method PUT "repos/$OWNER/$REPOSITORY/rulesets/$existing_ruleset_id" --input - >/dev/null || fail "cannot add main to factory ruleset"
 fi
 
 workflows=$(gh api -H "X-GitHub-Api-Version: $API_VERSION" "repos/$OWNER/$REPOSITORY/actions/workflows?per_page=100") || fail "cannot verify repository workflows"
@@ -217,7 +226,7 @@ ruleset_id=$(printf '%s' "$rulesets" | jq -r '.[] | select(.name == "software-fa
 ruleset_state=$(gh api -H "X-GitHub-Api-Version: $API_VERSION" "repos/$OWNER/$REPOSITORY/rulesets/$ruleset_id") || fail "cannot verify factory ruleset"
 printf '%s' "$ruleset_state" | jq -e --arg check "$REQUIRED_CHECK" '
   .enforcement == "active" and
-  (.conditions.ref_name.include | contains(["~DEFAULT_BRANCH"])) and
+  (.conditions.ref_name.include | contains(["~DEFAULT_BRANCH", "refs/heads/main"])) and
   ([.rules[].type] | contains(["deletion", "non_fast_forward", "pull_request", "required_status_checks"])) and
   (any(.rules[]; .type == "pull_request" and .parameters.required_approving_review_count == 0)) and
   (any(.rules[]; .type == "required_status_checks" and any(.parameters.required_status_checks[]; .context == $check)))
