@@ -6,7 +6,8 @@ OWNER=""
 REPOSITORY=""
 PROJECT_TITLE=""
 VISIBILITY="private"
-REQUIRED_CHECK="CI / verify"
+REQUIRED_CHECK="verify"
+REQUIRED_CHECK_EXPLICIT=0
 API_VERSION="2026-03-10"
 APPLY=0
 
@@ -16,7 +17,7 @@ Usage: configure-project.sh --owner OWNER --repo NAME --project-title TITLE [opt
 
 Options:
   --visibility private|public  Repository visibility (default: private)
-  --required-check NAME        Required CI check (default: CI / verify)
+  --required-check NAME        Required CI check (default: verify)
   --apply                      Apply after printing the plan
   --help                       Show this help
 EOF
@@ -33,7 +34,7 @@ while [ "$#" -gt 0 ]; do
     --repo) [ "$#" -ge 2 ] || fail "--repo requires a value"; REPOSITORY=$2; shift 2 ;;
     --project-title) [ "$#" -ge 2 ] || fail "--project-title requires a value"; PROJECT_TITLE=$2; shift 2 ;;
     --visibility) [ "$#" -ge 2 ] || fail "--visibility requires a value"; VISIBILITY=$2; shift 2 ;;
-    --required-check) [ "$#" -ge 2 ] || fail "--required-check requires a value"; REQUIRED_CHECK=$2; shift 2 ;;
+    --required-check) [ "$#" -ge 2 ] || fail "--required-check requires a value"; REQUIRED_CHECK=$2; REQUIRED_CHECK_EXPLICIT=1; shift 2 ;;
     --apply) APPLY=1; shift ;;
     --help) usage; exit 0 ;;
     *) fail "unknown option: $1" ;;
@@ -66,15 +67,26 @@ command -v gh >/dev/null 2>&1 || fail "gh is required"
 command -v jq >/dev/null 2>&1 || fail "jq is required"
 gh auth status >/dev/null 2>&1 || fail "GitHub CLI authentication is unavailable"
 
+TMP_ERR=$(mktemp "${TMPDIR:-/tmp}/configure-project.XXXXXX") || fail "cannot create temporary file"
+trap 'rm -f "$TMP_ERR"' EXIT HUP INT TERM
+
 owner_state=$(gh api -H "X-GitHub-Api-Version: $API_VERSION" "users/$OWNER") || fail "cannot inspect owner"
 owner_type=$(printf '%s' "$owner_state" | jq -r '.type') || fail "invalid owner response"
 case "$owner_type" in User|Organization) ;; *) fail "unsupported GitHub owner type: $owner_type" ;; esac
 
 REPO_CREATED=0
-if repository_state=$(gh repo view "$OWNER/$REPOSITORY" --json visibility,defaultBranchRef 2>/dev/null); then
+if repository_state=$(gh repo view "$OWNER/$REPOSITORY" --json visibility,defaultBranchRef 2>"$TMP_ERR"); then
   actual_visibility=$(printf '%s' "$repository_state" | jq -r '.visibility | ascii_downcase') || fail "cannot inspect repository"
   [ "$actual_visibility" = "$VISIBILITY" ] || fail "existing repository visibility is $actual_visibility"
 else
+  # Only a genuinely missing repository may be created. Any other failure
+  # (access, network, rate limit) must stop so a transient error never
+  # provisions an unexpected repository.
+  repo_error=$(cat "$TMP_ERR")
+  case "$repo_error" in
+    *"Could not resolve to a Repository"*) ;;
+    *) fail "cannot inspect repository: ${repo_error:-unknown error}" ;;
+  esac
   gh repo create "$OWNER/$REPOSITORY" "--$VISIBILITY" --add-readme || fail "cannot create repository"
   REPO_CREATED=1
   repository_state=$(gh repo view "$OWNER/$REPOSITORY" --json visibility,defaultBranchRef) || fail "cannot inspect created repository"
@@ -84,6 +96,16 @@ default_branch=$(printf '%s' "$repository_state" | jq -r '.defaultBranchRef.name
 
 workflows=$(gh api -H "X-GitHub-Api-Version: $API_VERSION" "repos/$OWNER/$REPOSITORY/actions/workflows?per_page=100") || fail "cannot inspect repository workflows"
 workflow_count=$(printf '%s' "$workflows" | jq '.total_count') || fail "invalid workflows response"
+
+# A repository that already has CI publishes status checks whose names we cannot
+# know. Requiring our default check would block its real pull requests, so stop
+# and ask for the exact check name. Skip this when the factory already
+# provisioned the repository, because its own CI and ruleset are then expected.
+if [ "$workflow_count" -gt 0 ] && [ "$REQUIRED_CHECK_EXPLICIT" -eq 0 ]; then
+  existing_rulesets=$(gh api -H "X-GitHub-Api-Version: $API_VERSION" "repos/$OWNER/$REPOSITORY/rulesets") || fail "cannot inspect repository rulesets"
+  existing_factory=$(printf '%s' "$existing_rulesets" | jq '[.[] | select(.name == "software-factory-development")] | length') || fail "invalid ruleset response"
+  [ "$existing_factory" -gt 0 ] || fail "repository already has CI; re-run with --required-check NAME set to the status check its CI publishes"
+fi
 
 PROJECT_SCAN_LIMIT=1000
 projects=$(gh project list --owner "$OWNER" --limit "$PROJECT_SCAN_LIMIT" --format json) || fail "cannot list Projects"
@@ -133,8 +155,18 @@ if [ "$ruleset_count" -eq 1 ]; then
   ' >/dev/null || fail "existing factory ruleset conflicts"
 fi
 
-project_visibility=$(printf '%s' "$VISIBILITY" | tr '[:lower:]' '[:upper:]')
-gh project edit "$project_number" --owner "$OWNER" --visibility "$project_visibility" >/dev/null || fail "cannot set Project visibility"
+# Set visibility only on a Project the factory created. For a pre-existing
+# Project, verify it already matches and stop on a mismatch rather than silently
+# overwriting project-owned visibility.
+desired_public=false
+[ "$VISIBILITY" = public ] && desired_public=true
+if [ "$PROJECT_CREATED" -eq 1 ]; then
+  project_visibility=$(printf '%s' "$VISIBILITY" | tr '[:lower:]' '[:upper:]')
+  gh project edit "$project_number" --owner "$OWNER" --visibility "$project_visibility" >/dev/null || fail "cannot set Project visibility"
+else
+  current_public=$(gh project view "$project_number" --owner "$OWNER" --format json --jq '.public') || fail "cannot inspect Project visibility"
+  [ "$current_public" = "$desired_public" ] || fail "existing Project visibility does not match --visibility $VISIBILITY"
+fi
 
 if [ "$PROJECT_CREATED" -eq 1 ]; then
   status_id=$(printf '%s' "$fields" | jq -r '.fields[] | select(.name == "Status") | .id')

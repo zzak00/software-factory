@@ -123,7 +123,7 @@ files:
   - path: "skills/implement/agents/openai.yaml"
     sha256: "48d5632ecf1f872283752a4e0a8403a6ea7af6f6f3d183535bb5b47bf56e5fd0"
   - path: "skills/plannotator-review/SKILL.md"
-    sha256: "7dc3fd5ada4c0984d6e48402db1db98ce0a9bb3a43fc9d60b87831c269704d68"
+    sha256: "6ba7af718c60efb73b52f5726522d3534ff4e25d105b828185d43b34505eb0a3"
   - path: "skills/plannotator-review/agents/openai.yaml"
     sha256: "2eced4d7a31c06a15bdce0057f04aa8480a01eb6dc128365ed2f438799a9737e"
   - path: "skills/tdd/SKILL.md"
