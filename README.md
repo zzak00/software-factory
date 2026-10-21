@@ -86,7 +86,7 @@ After checking the exact preview, add `--apply`. The configurator creates or
 reuses the repository and Project, links them, configures the five Status values
 and two Risk values, and applies development-only branch protection. Existing
 CI is preserved. When a repository has no workflow, the configurator adds a
-minimal `CI / verify` hygiene check before requiring it. It refuses to overwrite
+minimal `verify` hygiene check before requiring it. It refuses to overwrite
 incompatible existing configuration and never touches deployment, secrets,
 environments, production, or monitoring.
 
