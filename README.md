@@ -36,6 +36,7 @@ and [the build plan](software-factory-build-plan.md) for implementation scope.
 - macOS with Git and Bash
 - Node.js 24
 - GitHub CLI authenticated with `repo` and `project` scopes
+- `jq` (the project configurator parses GitHub JSON with it)
 - Worktrunk
 - Plannotator 0.27.20 or newer
 - Codex, Claude Code, or both
@@ -46,10 +47,15 @@ Check capabilities directly:
 git --version
 node --version
 gh auth status
+jq --version
 wt --version
 plannotator --version
 plannotator review --help
 ```
+
+Repository rulesets on a **private** repository require GitHub Pro or higher.
+On a free personal account, use a public repository for the project you
+configure, or the ruleset step will fail.
 
 ## Install the skills
 
@@ -69,6 +75,15 @@ is unsafe.
 For upgrades, review the repository diff and lock changes first. If an installed
 skill differs, archive it outside the destination, rerun the dry run, then apply.
 The installer never merges, deletes, or replaces it.
+
+## Invoke a skill
+
+Skills install per harness: Codex reads `~/.agents/skills` and Claude Code reads
+`~/.claude/skills`. Every reusable skill here is explicit-invocation only, so you
+name it yourself and pass its inputs in the same message.
+
+- Codex: `$skill-name` (for example `$code-review`).
+- Claude Code: `/skill-name` (for example `/code-review`).
 
 ## Configure a project
 
@@ -96,6 +111,17 @@ environments, production, or monitoring.
 
 Record outcome, scope, exclusions, risk, and observable acceptance criteria.
 Use `grill-me` only when assumptions or decisions need stress-testing.
+
+```bash
+issue_url=$(gh issue create --repo OWNER/REPO \
+  --title "TITLE" --body "Outcome, scope, exclusions, acceptance criteria")
+gh project item-add PROJECT_NUMBER --owner OWNER --url "$issue_url"
+```
+
+Set `Status` and `Risk` on the item. Read the field and option IDs from
+`gh project field-list PROJECT_NUMBER --owner OWNER --format json`, then apply
+them with `gh project item-edit --project-id PID --id ITEM_ID --field-id FID
+--single-select-option-id OID`, or set them in the Project web UI.
 
 ### Prepare
 
@@ -129,11 +155,27 @@ on that exact head. Standard work can proceed under an already-approved policy.
 Elevated work stops for explicit candidate approval and a separate publication
 approval. Merge only the reviewed commit.
 
+```bash
+gh pr create --repo OWNER/REPO --base main --head BRANCH \
+  --title "TITLE" --body "..."
+# after required checks pass on the reviewed head:
+gh pr merge NUMBER --repo OWNER/REPO --merge --match-head-commit REVIEWED_SHA
+```
+
+`--match-head-commit` makes the merge refuse if the head moved since review, and
+`--merge` preserves the reviewed commit rather than rewriting it.
+
 ### Maintain
 
 Fast-forward local `main`, compare local and remote object IDs, and rerun the
 crucial project check. Branch and worktree cleanup remain separate human
 decisions.
+
+```bash
+git fetch origin
+git switch main && git merge --ff-only origin/main
+git rev-parse main; git rev-parse origin/main   # object IDs must match
+```
 
 ## Rework
 
