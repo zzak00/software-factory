@@ -83,21 +83,20 @@ case "$1 $2" in
   "project create") printf '%s\n' '8' ;;
   "project edit") exit 0 ;;
   # The marker in shortDescription is the ownership signal for safe reuse.
+  # GH_TEST_PROJECT_ITEMS sets the card count reported for the Project.
   "project view")
-    if [ "${GH_TEST_MODE:-ok}" = unmarked ]; then
-      printf '%s\n' '{"id":"project-id","title":"Development - Software Factory","closed":false,"public":false,"shortDescription":"Unrelated board"}'
-    else
-      printf '%s\n' '{"id":"project-id","title":"Development - Software Factory","closed":false,"public":false,"shortDescription":"Managed by Software Factory"}'
-    fi
+    marker="Managed by Software Factory"
+    [ "${GH_TEST_MODE:-ok}" = unmarked ] && marker="Unrelated board"
+    jq -n --arg marker "$marker" --argjson items "${GH_TEST_PROJECT_ITEMS:-0}" '{id:"project-id",title:"Development - Software Factory",closed:false,public:false,shortDescription:$marker,items:{totalCount:$items}}'
     ;;
   "project field-list")
-    # Modes cover the default Status options on a new board, an existing field
-    # beyond the CLI's old default page, and a saturated lookup that must fail.
+    # Modes cover the default Status options on a new board or one left by an
+    # interrupted run, an existing field beyond the CLI's old default page, and
+    # a saturated lookup that must fail. Field state advances with each write.
     case "${GH_TEST_MODE:-ok}" in
       field-limit) jq -n '{fields: [range(0; 1000) | {name: ("Field " + tostring)}]}' ;;
       many-fields) jq -n '{fields: ([{id:"status",name:"Status",options:[{name:"Inbox"},{name:"Ready"},{name:"In Progress"},{name:"In Review"},{name:"Done"}]}] + [range(0; 29) | {name:("Field " + tostring)}] + [{id:"risk",name:"Risk",options:[{name:"Standard"},{name:"Elevated"}]}])}' ;;
-      default-status) printf '%s\n' '{"fields":[{"id":"status","name":"Status","options":[{"name":"Todo"},{"name":"In Progress"},{"name":"Done"}]}]}' ;;
-      new-project)
+      new-project|default-status)
         if ! grep -q 'graphql --input' "$GH_TEST_LOG"; then
           printf '%s\n' '{"fields":[{"id":"status","name":"Status","options":[{"name":"Todo"},{"name":"In Progress"},{"name":"Done"}]}]}'
         elif ! grep -q 'project field-create' "$GH_TEST_LOG"; then
@@ -220,7 +219,6 @@ expect_failure_without_mutation() {
 
 # Reject incompatible fields, ownership, incomplete scans, excluded default
 # branch protection, ambiguous checks, and repository inspection errors.
-expect_failure_without_mutation default-status
 expect_failure_without_mutation unmarked
 expect_failure_without_mutation field-limit
 expect_failure_without_mutation excluded-main
@@ -228,6 +226,19 @@ expect_failure_without_mutation ambiguous-ci
 expect_failure_without_mutation no-ci --required-check build
 expect_failure_without_mutation limit
 expect_failure_without_mutation repo-error
+
+# A run interrupted after marking a new Project leaves GitHub's default Status
+# options. With no cards to invalidate, a rerun finishes the configuration.
+: > "$LOG"
+GH_TEST_MODE=default-status run_configure --apply >/dev/null || fail "interrupted empty factory Project was not recovered"
+grep -q 'graphql --input' "$LOG" || fail "interrupted factory Project Status was not configured"
+if grep -q 'project create' "$LOG"; then fail "recovery created another Project"; fi
+
+# The same default options on a Project that already holds cards stay
+# untouched, because replacing options would clear those cards' Status.
+export GH_TEST_PROJECT_ITEMS=3
+expect_failure_without_mutation default-status
+unset GH_TEST_PROJECT_ITEMS
 
 : > "$LOG"
 # Verify ordering: ruleset conflict is detected before creating a Project.
