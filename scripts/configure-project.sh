@@ -129,8 +129,19 @@ status_count=$(printf '%s' "$fields" | jq '[.fields[] | select(.name == "Status"
 [ "$status_count" -eq 1 ] || fail "Project must contain exactly one Status field"
 status_options=$(printf '%s' "$fields" | jq -r '.fields[] | select(.name == "Status") | [.options[].name] | join(",")')
 
-if [ "$PROJECT_CREATED" -eq 0 ]; then
-  [ "$status_options" = "Inbox,Ready,In Progress,In Review,Done" ] || fail "existing Status options conflict"
+# Decide whether Status options need configuring. A Project the factory just
+# created, or a pre-existing Project still carrying GitHub's untouched default
+# options, is safe to configure. Any other non-matching set is a real conflict,
+# for example a Project a prior interrupted run left with its defaults.
+NEED_STATUS_UPDATE=0
+if [ "$PROJECT_CREATED" -eq 1 ]; then
+  NEED_STATUS_UPDATE=1
+elif [ "$status_options" != "Inbox,Ready,In Progress,In Review,Done" ]; then
+  if [ "$status_options" = "Todo,In Progress,Done" ]; then
+    NEED_STATUS_UPDATE=1
+  else
+    fail "existing Status options conflict"
+  fi
 fi
 
 risk_count=$(printf '%s' "$fields" | jq '[.fields[] | select(.name == "Risk")] | length')
@@ -168,7 +179,7 @@ else
   [ "$current_public" = "$desired_public" ] || fail "existing Project visibility does not match --visibility $VISIBILITY"
 fi
 
-if [ "$PROJECT_CREATED" -eq 1 ]; then
+if [ "$NEED_STATUS_UPDATE" -eq 1 ]; then
   status_id=$(printf '%s' "$fields" | jq -r '.fields[] | select(.name == "Status") | .id')
   payload=$(jq -n --arg id "$status_id" '{query:"mutation($input: UpdateProjectV2FieldInput!) { updateProjectV2Field(input: $input) { projectV2Field { ... on ProjectV2SingleSelectField { id } } } }",variables:{input:{fieldId:$id,singleSelectOptions:[{name:"Inbox",color:"GRAY",description:"Unresolved intent"},{name:"Ready",color:"BLUE",description:"Approved and unblocked"},{name:"In Progress",color:"YELLOW",description:"Implementation active"},{name:"In Review",color:"PURPLE",description:"Published for review"},{name:"Done",color:"GREEN",description:"Merged and synchronized"}]}}}') || fail "cannot build Status update"
   printf '%s' "$payload" | gh api graphql --input - >/dev/null || fail "cannot configure Status"
@@ -215,6 +226,7 @@ name: CI
 on:
   pull_request:
   push:
+    branches: ["__DEFAULT_BRANCH__"]
 
 permissions:
   contents: read
@@ -224,10 +236,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Check repository hygiene
-        run: git diff --check "$(git hash-object -t tree /dev/null)" HEAD
+      - name: Check for merge conflict markers
+        run: |
+          if git grep -nIE '^(<{7}|>{7})( |$)' -- .; then
+            echo "merge conflict markers found" >&2
+            exit 1
+          fi
+          echo "no conflict markers"
 EOF
 )
+  workflow=${workflow//__DEFAULT_BRANCH__/$default_branch}
   workflow_content=$(printf '%s\n' "$workflow" | base64 | tr -d '\n') || fail "cannot encode CI starter"
   workflow_payload=$(jq -n --arg message "Add minimal development CI" --arg content "$workflow_content" --arg branch "$default_branch" '{message:$message,content:$content,branch:$branch}') || fail "cannot build CI starter"
   printf '%s' "$workflow_payload" | gh api -H "X-GitHub-Api-Version: $API_VERSION" --method PUT "repos/$OWNER/$REPOSITORY/contents/.github/workflows/ci.yml" --input - >/dev/null || fail "cannot add CI starter"
