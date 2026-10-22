@@ -32,6 +32,10 @@ expect_status 0 "$INSTALLER" --target-home "$HOME_ONE" --harness all
 diff -qr "$ROOT/skills" "$HOME_ONE/.agents/skills" >/dev/null || fail "Codex bundle differs"
 diff -qr "$ROOT/skills" "$HOME_ONE/.claude/skills" >/dev/null || fail "Claude bundle differs"
 
+# A macOS .DS_Store left in an installed skill must not read as a conflict.
+printf 'Bud1\0' > "$HOME_ONE/.claude/skills/code-review/.DS_Store"
+expect_status 0 "$INSTALLER" --target-home "$HOME_ONE" --harness all
+
 HOME_TWO="$TEST_ROOT/home-two"
 mkdir -p "$HOME_TWO/.agents/skills/code-review"
 printf 'conflict\n' > "$HOME_TWO/.agents/skills/code-review/SKILL.md"

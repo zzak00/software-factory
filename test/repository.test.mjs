@@ -12,6 +12,7 @@ async function filesBelow(directory) {
   const found = [];
   async function visit(current) {
     for (const entry of await readdir(current, { withFileTypes: true })) {
+      if (entry.name === ".DS_Store") continue;
       const path = join(current, entry.name);
       if (entry.isDirectory()) await visit(path);
       else found.push(relative(root.pathname, path));
