@@ -59,11 +59,14 @@ case "$1 $2" in
   "project field-list")
     if [ "${GH_TEST_MODE:-ok}" = conflict ]; then
       printf '%s\n' '{"fields":[{"id":"status","name":"Status","options":[{"name":"Todo"}]}]}'
+    elif [ "${GH_TEST_MODE:-ok}" = default-status ] && ! grep -q 'graphql --input' "$GH_TEST_LOG"; then
+      printf '%s\n' '{"fields":[{"id":"status","name":"Status","options":[{"name":"Todo"},{"name":"In Progress"},{"name":"Done"}]}]}'
     else
       printf '%s\n' '{"fields":[{"id":"status","name":"Status","options":[{"name":"Inbox"},{"name":"Ready"},{"name":"In Progress"},{"name":"In Review"},{"name":"Done"}]},{"id":"risk","name":"Risk","options":[{"name":"Standard"},{"name":"Elevated"}]}]}'
     fi
     ;;
   "project link") exit 0 ;;
+  "project field-create") exit 0 ;;
   "api graphql")
     if [ "${GH_TEST_MODE:-ok}" = no-board ] && ! grep -Eq 'POST (users|orgs)/test/projectsV2/7/views' "$GH_TEST_LOG"; then
       printf '%s\n' '{"data":{"node":{"repositories":{"nodes":[{"nameWithOwner":"test/project"}]},"fields":{"nodes":[{"databaseId":5,"name":"Status"}]},"views":{"nodes":[]}}}}'
@@ -81,7 +84,9 @@ case "$1 $2" in
   "api repos/test/project/rulesets/9") printf '%s\n' '{"enforcement":"active","conditions":{"ref_name":{"include":["~DEFAULT_BRANCH"]}},"rules":[{"type":"deletion"},{"type":"non_fast_forward"},{"type":"pull_request","parameters":{"required_approving_review_count":0}},{"type":"required_status_checks","parameters":{"required_status_checks":[{"context":"verify"}]}}]}' ;;
   "api --method")
     case "$*" in
-      *"PUT repos/test/project/contents/.github/workflows/ci.yml"*) exit 0 ;;
+      *"PUT repos/test/project/contents/.github/workflows/ci.yml"*)
+        if [ -n "${GH_TEST_CI_BODY:-}" ]; then cat > "$GH_TEST_CI_BODY"; fi
+        exit 0 ;;
       *"POST users/test/projectsV2/7/views"*) exit 0 ;;
       *"POST orgs/test/projectsV2/7/views"*) exit 0 ;;
       *) printf 'unexpected mutating API call: %s\n' "$*" >&2; exit 90 ;;
@@ -105,8 +110,15 @@ if grep -Eq 'repo create|project create|field-create|--method POST' "$LOG"; then
 fi
 
 : > "$LOG"
-PATH="$FAKE_BIN:$PATH" GH_TEST_LOG="$LOG" GH_TEST_MODE=no-ci "$CONFIGURE" --owner test --repo project --project-title Development --apply >/dev/null
+CI_BODY="$TEST_ROOT/ci-body.json"
+PATH="$FAKE_BIN:$PATH" GH_TEST_LOG="$LOG" GH_TEST_MODE=no-ci GH_TEST_CI_BODY="$CI_BODY" "$CONFIGURE" --owner test --repo project --project-title Development --apply >/dev/null
 grep -q 'PUT repos/test/project/contents/.github/workflows/ci.yml' "$LOG" || fail "missing CI starter was not created"
+ci_yaml=$(jq -r '.content' "$CI_BODY" | base64 --decode)
+printf '%s' "$ci_yaml" | grep -q 'git grep' || fail "CI starter is missing the conflict-marker check"
+printf '%s' "$ci_yaml" | grep -q 'branches: \["main"\]' || fail "CI starter did not pin push to the default branch"
+if printf '%s' "$ci_yaml" | grep -q 'git diff --check'; then
+  fail "CI starter still uses the whole-repo whitespace scan"
+fi
 
 : > "$LOG"
 PATH="$FAKE_BIN:$PATH" GH_TEST_LOG="$LOG" GH_TEST_MODE=no-board "$CONFIGURE" --owner test --repo project --project-title Development --apply >/dev/null
@@ -165,5 +177,13 @@ set -e
 if grep -Eq 'project edit|project create|--method POST' "$LOG"; then
   fail "visibility conflict caused a mutation"
 fi
+
+: > "$LOG"
+set +e
+out=$(PATH="$FAKE_BIN:$PATH" GH_TEST_LOG="$LOG" GH_TEST_MODE=default-status "$CONFIGURE" --owner test --repo project --project-title Development --apply 2>&1)
+status=$?
+set -e
+[ "$status" -eq 0 ] || fail "untouched default Status options were not reconfigured (exit $status: $out)"
+grep -q 'graphql --input' "$LOG" || fail "default Status options were not updated to the factory set"
 
 printf 'ok - project configuration dry-run and conflict safety\n'
