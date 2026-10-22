@@ -91,7 +91,7 @@ awk '
 ' "$LOCK_FILE" > "$LOCK_ENTRIES" || fail "cannot parse skills.lock"
 
 [ -s "$LOCK_ENTRIES" ] || fail "skills.lock contains no files"
-find "$REPO_ROOT/skills" -type f -print | LC_ALL=C sort > "$SOURCE_FILES" || fail "cannot list source skills"
+find "$REPO_ROOT/skills" -type f ! -name '.DS_Store' -print | LC_ALL=C sort > "$SOURCE_FILES" || fail "cannot list source skills"
 
 LOCK_COUNT=$(wc -l < "$LOCK_ENTRIES" | tr -d ' ')
 SOURCE_COUNT=$(wc -l < "$SOURCE_FILES" | tr -d ' ')
@@ -126,7 +126,7 @@ while IFS= read -r destination_root; do
     if [ ! -e "$destination" ]; then
       printf 'install needed: %s\n' "$destination"
       NEEDED=1
-    elif [ ! -d "$destination" ] || ! diff -qr "$source_dir" "$destination" >/dev/null 2>&1; then
+    elif [ ! -d "$destination" ] || ! diff -qr -x '.DS_Store' "$source_dir" "$destination" >/dev/null 2>&1; then
       printf 'conflict: %s\n' "$destination" >&2
       CONFLICT=1
     else
