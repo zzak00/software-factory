@@ -7,7 +7,7 @@ Provide a direct, reviewable path from accepted intent to merged code. Keep the 
 ## Accepted setup decisions
 
 - A factory Project is always separate from any existing Project. Its name is "<requested title> - Software Factory" and its description marks it for safe reuse.
-- Existing cards and Status options remain untouched. A collision with an unmarked Project or incompatible factory configuration stops setup.
+- Existing cards and the Status options of any Project holding cards remain untouched. A marked factory Project that an interrupted run left empty with GitHub's default Status options is finished on rerun. A collision with an unmarked Project or incompatible factory configuration stops setup.
 - Read all Project fields before deciding whether Status or Risk exists. Incomplete results stop setup.
 - When the target repository has no CI, add a single Python quality job running Ruff lint and formatting checks. CI reports findings and never commits fixes.
 - When CI already exists, use one unambiguous published check or an explicitly selected check. Do not replace existing workflows.

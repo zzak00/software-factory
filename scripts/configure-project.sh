@@ -229,8 +229,12 @@ status_options=$(printf '%s' "$fields" | jq -r '.fields[] | select(.name == "Sta
 
 NEED_STATUS_UPDATE=0
 # Replacing single-select options can invalidate values on existing cards.
-# Consequently, only the Project created in this run gets new Status options.
+# Consequently, new options go only to the Project created in this run, or to a
+# marked Project that a previous run left with GitHub's defaults and no cards.
+project_items=$(printf '%s' "$project_details" | jq -e '.items.totalCount') || fail "cannot count factory Project cards"
 if [ "$PROJECT_CREATED" -eq 1 ]; then
+  NEED_STATUS_UPDATE=1
+elif [ "$status_options" = "Todo,In Progress,Done" ] && [ "$project_items" -eq 0 ]; then
   NEED_STATUS_UPDATE=1
 elif [ "$status_options" != "Inbox,Ready,In Progress,In Review,Done" ]; then
   fail "existing factory Project has different Status options; leaving its cards untouched"
