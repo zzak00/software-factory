@@ -1,197 +1,108 @@
 # Software Factory
 
-A lean, codebase-only development workflow for turning intent into reviewed,
-integrated, maintainable code:
+A lightweight workflow for turning an agreed code change into reviewed, merged code:
 
-`Clarify -> Prepare -> Implement -> Review -> Integrate -> Maintain`
+Clarify -> Prepare -> Implement -> Review -> Integrate -> Maintain
 
-It supports macOS, GitHub.com, Codex, Claude Code, Worktrunk, and Plannotator.
-It does not manage deployment, production, environments, monitoring, or
-rollback.
+The repository provides a GitHub Project configurator and an operator runbook. It also contains an optional skill bundle for Codex and Claude Code. The workflow works without installing those skills. Deployment and production operations are outside its scope.
 
-## Choose the route
+See the [mental map](software-factory-mental-map.md) for the workflow at a glance and the [current plan](software-factory-plan.md) for the accepted setup decisions.
 
-Use the compact route for a clear, low-risk change that fits one implementation
-session. Record the outcome and acceptance evidence in one issue, then prepare,
-implement, review, and integrate it.
+## Requirements
 
-Use the extended route when important decisions are unresolved or the work must
-span sessions:
+- macOS, Git, Bash, jq, and an authenticated GitHub CLI with repository and Project access
+- Permission to write workflows when setup must create Python CI (the workflow scope for a classic token)
+- Worktrunk for isolated worktrees
+- Plannotator for human inspection of the final code diff
+- The target repository's own development tools and checks
 
-1. Use `grill-me` or `grill-with-docs` to settle intent.
-2. Use `to-spec` only when a disposable cross-session specification helps.
-3. Review that specification in Plannotator.
-4. Use `to-tickets` only when the approved work benefits from decomposition.
-5. Publish approved drafts through the project's own tracker workflow.
+Check local capabilities with:
 
-A PRD is optional. The approved issue can be the plan for compact work. A
-disposable specification is the plan for extended work when decisions need a
-stable cross-session artifact.
+    git --version
+    gh auth status
+    jq --version
+    wt --version
+    plannotator --version
 
-See [the mental map](software-factory-mental-map.html) for the complete routing
-and [the build plan](software-factory-build-plan.md) for implementation scope.
+Private repository rulesets require an eligible GitHub plan. A ruleset failure must be resolved on GitHub before setup can complete.
 
-## Prerequisites
+## Optional harness skills
 
-- macOS with Git and Bash
-- Node.js 24
-- GitHub CLI authenticated with `repo` and `project` scopes
-- `jq` (the project configurator parses GitHub JSON with it)
-- Worktrunk
-- Plannotator 0.27.20 or newer
-- Codex, Claude Code, or both
+The skills in this repository are a separate artifact for local harnesses. Their source files are recorded in skills.lock. The offline installer verifies the lock and refuses to overwrite a differing installation. Preview, then install if you want to use them:
 
-Check capabilities directly:
+    ./scripts/install-skills.sh --harness all
+    ./scripts/install-skills.sh --harness all --apply
 
-```bash
-git --version
-node --version
-gh auth status
-jq --version
-wt --version
-plannotator --version
-plannotator review --help
-```
+Codex installs to ~/.agents/skills and Claude Code installs to ~/.claude/skills. Use --target-home with an absolute path to select another home directory. The dry run returns 0 when already verified, 2 when installation is needed, and 1 for a conflict or unsafe bundle.
 
-Repository rulesets on a **private** repository require GitHub Pro or higher.
-On a free personal account, use a public repository for the project you
-configure, or the ruleset step will fail.
+## Configure a repository and Project
 
-## Install the skills
+Preview the intended resources:
 
-The installer is offline, verifies every source file against `skills.lock`, and
-never overwrites a differing installation.
+    ./scripts/configure-project.sh \
+      --owner OWNER \
+      --repo REPOSITORY \
+      --project-title "Development" \
+      --visibility private
 
-```bash
-./scripts/install-skills.sh --harness all
-./scripts/install-skills.sh --harness all --apply
-```
+Run the same command with --apply when ready. The configurator always targets a Project named "Development - Software Factory" in this example. An existing "Development" Project and its cards remain untouched. The factory Project carries a description marker; a same-named Project without that marker is treated as a conflict.
 
-The default is a dry run. Use `--target-home /absolute/path` to verify or install
-against another home directory. Exit status `0` means verified or applied, `2`
-means installation is needed, and `1` means input, source, or destination state
-is unsafe.
+The factory Project has Status options Inbox, Ready, In Progress, In Review, and Done, plus Risk options Standard and Elevated. It is linked to the repository and has a Board view grouped by Status. Reusing a marked Project requires compatible fields and visibility. Existing Status options are never rewritten.
 
-For upgrades, review the repository diff and lock changes first. If an installed
-skill differs, archive it outside the destination, rerun the dry run, then apply.
-The installer never merges, deletes, or replaces it.
+For a repository without CI, setup adds one Python quality workflow. Its verify job runs Ruff lint and a formatting check on pull requests and pushes to the default branch. These checks report issues but do not edit files. Run Ruff locally to fix them:
 
-## Invoke a skill
+    ruff check .
+    ruff format .
 
-Skills install per harness: Codex reads `~/.agents/skills` and Claude Code reads
-`~/.claude/skills`. Every reusable skill here is explicit-invocation only, so you
-name it yourself and pass its inputs in the same message.
+For a repository with CI, setup reads checks published on its default branch. If exactly one check name exists, it requires that check. If no check or several check names exist, pass --required-check NAME after confirming the check name in GitHub. This also supports checks that run only on pull requests. Existing workflows are preserved. The ruleset requires a pull request, the chosen check, resolved review threads, and an up-to-date branch; it blocks deletion and force pushes. A conflicting factory ruleset is reported and left untouched.
 
-- Codex: `$skill-name` (for example `$code-review`).
-- Claude Code: `/skill-name` (for example `/code-review`).
-
-## Configure a project
-
-Preview first:
-
-```bash
-./scripts/configure-project.sh \
-  --owner OWNER \
-  --repo REPOSITORY \
-  --project-title "Development" \
-  --visibility private
-```
-
-After checking the exact preview, add `--apply`. The configurator creates or
-reuses the repository and Project, links them, configures the five Status values
-and two Risk values, and applies development-only branch protection. Existing
-CI is preserved. When a repository has no workflow, the configurator adds a
-minimal `verify` hygiene check before requiring it. It refuses to overwrite
-incompatible existing configuration and never touches deployment, secrets,
-environments, production, or monitoring.
+The default command is a dry run. It does not contact GitHub, so the final check name and whether a Project will be reused are resolved during --apply. An interrupted creation before the Project receives its marker requires inspection before another run.
 
 ## Development workflow
 
 ### Clarify
 
-Record outcome, scope, exclusions, risk, and observable acceptance criteria.
-Use `grill-me` only when assumptions or decisions need stress-testing.
-
-```bash
-issue_url=$(gh issue create --repo OWNER/REPO \
-  --title "TITLE" --body "Outcome, scope, exclusions, acceptance criteria")
-gh project item-add PROJECT_NUMBER --owner OWNER --url "$issue_url"
-```
-
-Set `Status` and `Risk` on the item. Read the field and option IDs from
-`gh project field-list PROJECT_NUMBER --owner OWNER --format json`, then apply
-them with `gh project item-edit --project-id PID --id ITEM_ID --field-id FID
---single-select-option-id OID`, or set them in the Project web UI.
+Record the outcome, scope, exclusions, risk, and observable acceptance criteria in an issue. Standard work with clear intent can proceed from that issue. For larger or uncertain work, settle decisions in discussion or a short working specification. Any external planning skill is optional.
 
 ### Prepare
 
-Confirm the exact base commit. Create an isolated worktree directly:
+Confirm the exact base commit, create an isolated worktree, and run that repository's setup commands:
 
-```bash
-wt switch --create BRANCH --base COMMIT --no-cd --no-hooks
-```
+    wt switch --create BRANCH --base COMMIT --no-cd --no-hooks
 
-Run the project's documented setup commands. Move the item to `In Progress`
-only after the checkout and requirements are ready.
+Move the Project item to In Progress when its checkout and requirements are ready.
 
 ### Implement
 
-Invoke `implement` with approved behavior, exclusions, verification seams, and
-project commands. The skill edits and validates the current checkout but never
-commits or changes tracker state. The workflow reviews its evidence, then owns
-the commit.
+Change only the approved behavior. Reproduce bugs as close to the user experience as practical, add focused tests where they protect meaningful behavior, and run the target repository's checks. The operator owns staging and commits, regardless of which assistant or tool writes code.
 
 ### Review
 
-Run `code-review` in a fresh read-only session with either an explicit base and
-head or an explicit working-diff boundary. After automated findings are clear,
-run `plannotator-review` against the same exact boundary. Any changed head or
-file manifest invalidates prior approval.
+Run an independent read-only code review against an explicit base and head, or an explicit working diff. Resolve findings against the complete change. Record the reviewed head and file set.
 
 ### Integrate
 
-Publish the reviewed commit, open the pull request, and wait for required checks
-on that exact head. Standard work can proceed under an already-approved policy.
-Elevated work stops for explicit candidate approval and a separate publication
-approval. Merge only the reviewed commit.
+Push the reviewed commit, open the pull request, and wait for the required CI check on that exact head. Then inspect the CI-passing diff in Plannotator. If the head changes, rerun the affected checks and review. Merge only the approved head:
 
-```bash
-gh pr create --repo OWNER/REPO --base main --head BRANCH \
-  --title "TITLE" --body "..."
-# after required checks pass on the reviewed head:
-gh pr merge NUMBER --repo OWNER/REPO --merge --match-head-commit REVIEWED_SHA
-```
+    gh pr merge NUMBER --repo OWNER/REPOSITORY --merge --match-head-commit REVIEWED_SHA
 
-`--match-head-commit` makes the merge refuse if the head moved since review, and
-`--merge` preserves the reviewed commit rather than rewriting it.
+Standard work can proceed under an approved workflow policy. Elevated work needs approval of the exact candidate before publication and approval of publication itself. The final human diff review and merge decision remain separate.
 
 ### Maintain
 
-Fast-forward local `main`, compare local and remote object IDs, and rerun the
-crucial project check. Branch and worktree cleanup remain separate human
-decisions.
+After merge, fast-forward local main, verify it matches the remote object ID, and rerun the crucial target-project check:
 
-```bash
-git fetch origin
-git switch main && git merge --ff-only origin/main
-git rev-parse main; git rev-parse origin/main   # object IDs must match
-```
+    git fetch origin
+    git switch main
+    git merge --ff-only origin/main
+    git rev-parse main
+    git rev-parse origin/main
 
-## Rework
+Branch and worktree cleanup are separate decisions. Keep both Projects during migration; move existing cards only through a separately agreed migration.
 
-Keep the original comparison base. Review corrections as part of the complete
-change, not only the latest patch. Reuse the existing worktree when safe. A
-scope change returns to clarification and updates accepted intent before more
-implementation.
+## Validate this repository
 
-## Validation
-
-```bash
-npm ci
-npm test
-bash -n scripts/*.sh test/*.sh
-shellcheck scripts/*.sh test/*.sh
-```
-
-The checks cover only distribution integrity, skill boundaries, valid HTML, and
-the destructive-risk boundaries of installation and project configuration.
+    bash test/configure-project.test.sh
+    bash test/install-skills.test.sh
+    bash -n scripts/*.sh test/*.sh
+    shellcheck scripts/*.sh test/*.sh

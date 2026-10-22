@@ -1,14 +1,22 @@
 #!/usr/bin/env bash
 
+# Configure the GitHub resources for one factory-managed repository. Without
+# --apply this script only prints the intended shape and makes no API calls.
+# The script uses explicit failures instead of `set -e` so each stop explains
+# which GitHub object was incomplete or incompatible.
 set -u
 
+# Values supplied by the caller, followed by the stable API and lookup limits.
+# An empty REQUIRED_CHECK means we must infer it from published CI later.
 OWNER=""
 REPOSITORY=""
 PROJECT_TITLE=""
 VISIBILITY="private"
-REQUIRED_CHECK="verify"
+REQUIRED_CHECK=""
 REQUIRED_CHECK_EXPLICIT=0
 API_VERSION="2026-03-10"
+PROJECT_FIELD_LIMIT=1000
+FACTORY_DESCRIPTION="Managed by Software Factory"
 APPLY=0
 
 usage() {
@@ -17,7 +25,7 @@ Usage: configure-project.sh --owner OWNER --repo NAME --project-title TITLE [opt
 
 Options:
   --visibility private|public  Repository visibility (default: private)
-  --required-check NAME        Required CI check (default: verify)
+  --required-check NAME        Required check when existing CI is ambiguous
   --apply                      Apply after printing the plan
   --help                       Show this help
 EOF
@@ -28,6 +36,8 @@ fail() {
   exit 1
 }
 
+# Parse flags before touching GitHub. The explicit-check flag distinguishes an
+# omitted check from a caller-selected check that should skip inference.
 while [ "$#" -gt 0 ]; do
   case "$1" in
     --owner) [ "$#" -ge 2 ] || fail "--owner requires a value"; OWNER=$2; shift 2 ;;
@@ -41,21 +51,27 @@ while [ "$#" -gt 0 ]; do
   esac
 done
 
+# Validate the minimum identity and configuration needed for a safe target.
+# The owner/repository character check also keeps these values suitable for
+# building REST paths used below.
 [ -n "$OWNER" ] || fail "--owner is required"
 [ -n "$REPOSITORY" ] || fail "--repo is required"
 [ -n "$PROJECT_TITLE" ] || fail "--project-title is required"
-[ -n "$REQUIRED_CHECK" ] || fail "--required-check cannot be empty"
+[ "$REQUIRED_CHECK_EXPLICIT" -eq 0 ] || [ -n "$REQUIRED_CHECK" ] || fail "--required-check cannot be empty"
 case "$VISIBILITY" in private|public) ;; *) fail "--visibility must be private or public" ;; esac
 case "$OWNER/$REPOSITORY" in *[!A-Za-z0-9_./-]*) fail "owner and repository contain unsupported characters" ;; esac
+FACTORY_PROJECT_TITLE="$PROJECT_TITLE - Software Factory"
 
+# Print the same high-level plan in dry-run and apply mode. The suffix always
+# reserves a separate Project, even if a Project with the base title exists.
 printf '%s\n' \
   "Repository: $OWNER/$REPOSITORY ($VISIBILITY)" \
-  "Project: $OWNER / $PROJECT_TITLE" \
+  "Project: $OWNER / $FACTORY_PROJECT_TITLE" \
   "Status: Inbox, Ready, In Progress, In Review, Done" \
   "Risk: Standard, Elevated" \
   "View: Board grouped by Status" \
-  "CI: preserve existing workflows or add .github/workflows/ci.yml" \
-  "Ruleset: pull requests, no deletion, no force pushes, required check '$REQUIRED_CHECK'" \
+  "CI: preserve existing workflows or add a Python quality workflow" \
+  "Ruleset: pull requests, no deletion, no force pushes, one required CI check" \
   "Excluded: deployments, environments, secrets, production, monitoring"
 
 [ "$APPLY" -eq 1 ] || {
@@ -63,6 +79,7 @@ printf '%s\n' \
   exit 0
 }
 
+# Do all local prerequisite checks before any potentially mutating API call.
 command -v gh >/dev/null 2>&1 || fail "gh is required"
 command -v jq >/dev/null 2>&1 || fail "jq is required"
 gh auth status >/dev/null 2>&1 || fail "GitHub CLI authentication is unavailable"
@@ -70,11 +87,15 @@ gh auth status >/dev/null 2>&1 || fail "GitHub CLI authentication is unavailable
 TMP_ERR=$(mktemp "${TMPDIR:-/tmp}/configure-project.XXXXXX") || fail "cannot create temporary file"
 trap 'rm -f "$TMP_ERR"' EXIT HUP INT TERM
 
+# The REST user endpoint covers both users and organizations. Later, the Board
+# creation URL depends on which kind owns the Project.
 owner_state=$(gh api -H "X-GitHub-Api-Version: $API_VERSION" "users/$OWNER") || fail "cannot inspect owner"
 owner_type=$(printf '%s' "$owner_state" | jq -r '.type') || fail "invalid owner response"
 case "$owner_type" in User|Organization) ;; *) fail "unsupported GitHub owner type: $owner_type" ;; esac
 
 REPO_CREATED=0
+# Reuse a repository only when its visibility matches the request. A missing
+# repository is the one condition under which setup creates a new one.
 if repository_state=$(gh repo view "$OWNER/$REPOSITORY" --json visibility,defaultBranchRef 2>"$TMP_ERR"); then
   actual_visibility=$(printf '%s' "$repository_state" | jq -r '.visibility | ascii_downcase') || fail "cannot inspect repository"
   [ "$actual_visibility" = "$VISIBILITY" ] || fail "existing repository visibility is $actual_visibility"
@@ -94,76 +115,133 @@ fi
 default_branch=$(printf '%s' "$repository_state" | jq -r '.defaultBranchRef.name // empty') || fail "invalid repository response"
 [ -n "$default_branch" ] || fail "repository has no default branch; initialize it before applying factory configuration"
 
+# Inspect workflows and every repository ruleset before changing Projects.
+# A single ruleset page could hide an existing factory ruleset and make a
+# later create attempt unsafe. Capture gh's output before jq so API failures
+# cannot be hidden by a successful JSON parse of partial output.
 workflows=$(gh api -H "X-GitHub-Api-Version: $API_VERSION" "repos/$OWNER/$REPOSITORY/actions/workflows?per_page=100") || fail "cannot inspect repository workflows"
 workflow_count=$(printf '%s' "$workflows" | jq '.total_count') || fail "invalid workflows response"
-
-# A repository that already has CI publishes status checks whose names we cannot
-# know. Requiring our default check would block its real pull requests, so stop
-# and ask for the exact check name. Skip this when the factory already
-# provisioned the repository, because its own CI and ruleset are then expected.
-if [ "$workflow_count" -gt 0 ] && [ "$REQUIRED_CHECK_EXPLICIT" -eq 0 ]; then
-  existing_rulesets=$(gh api -H "X-GitHub-Api-Version: $API_VERSION" "repos/$OWNER/$REPOSITORY/rulesets") || fail "cannot inspect repository rulesets"
-  existing_factory=$(printf '%s' "$existing_rulesets" | jq '[.[] | select(.name == "software-factory-development")] | length') || fail "invalid ruleset response"
-  [ "$existing_factory" -gt 0 ] || fail "repository already has CI; re-run with --required-check NAME set to the status check its CI publishes"
-fi
-
-PROJECT_SCAN_LIMIT=1000
-projects=$(gh project list --owner "$OWNER" --limit "$PROJECT_SCAN_LIMIT" --format json) || fail "cannot list Projects"
-project_total=$(printf '%s' "$projects" | jq '.projects | length') || fail "invalid Project response"
-[ "$project_total" -lt "$PROJECT_SCAN_LIMIT" ] || fail "Project lookup reached the safety limit; narrow or clean up the owner before applying"
-project_count=$(printf '%s' "$projects" | jq --arg title "$PROJECT_TITLE" '[.projects[] | select(.title == $title)] | length') || fail "invalid Project response"
-[ "$project_count" -le 1 ] || fail "multiple Projects have the requested title"
-
-PROJECT_CREATED=0
-if [ "$project_count" -eq 0 ]; then
-  project_number=$(gh project create --owner "$OWNER" --title "$PROJECT_TITLE" --format json --jq '.number') || fail "cannot create Project"
-  PROJECT_CREATED=1
-else
-  project_number=$(printf '%s' "$projects" | jq -r --arg title "$PROJECT_TITLE" '.projects[] | select(.title == $title) | .number')
-fi
-
-project_id=$(gh project view "$project_number" --owner "$OWNER" --format json --jq '.id') || fail "cannot resolve Project ID"
-
-fields=$(gh project field-list "$project_number" --owner "$OWNER" --format json) || fail "cannot list Project fields"
-status_count=$(printf '%s' "$fields" | jq '[.fields[] | select(.name == "Status")] | length') || fail "invalid field response"
-[ "$status_count" -eq 1 ] || fail "Project must contain exactly one Status field"
-status_options=$(printf '%s' "$fields" | jq -r '.fields[] | select(.name == "Status") | [.options[].name] | join(",")')
-
-# Decide whether Status options need configuring. A Project the factory just
-# created, or a pre-existing Project still carrying GitHub's untouched default
-# options, is safe to configure. Any other non-matching set is a real conflict,
-# for example a Project a prior interrupted run left with its defaults.
-NEED_STATUS_UPDATE=0
-if [ "$PROJECT_CREATED" -eq 1 ]; then
-  NEED_STATUS_UPDATE=1
-elif [ "$status_options" != "Inbox,Ready,In Progress,In Review,Done" ]; then
-  if [ "$status_options" = "Todo,In Progress,Done" ]; then
-    NEED_STATUS_UPDATE=1
-  else
-    fail "existing Status options conflict"
-  fi
-fi
-
-risk_count=$(printf '%s' "$fields" | jq '[.fields[] | select(.name == "Risk")] | length')
-[ "$risk_count" -le 1 ] || fail "Project has multiple Risk fields"
-if [ "$risk_count" -eq 1 ]; then
-  risk_options=$(printf '%s' "$fields" | jq -r '.fields[] | select(.name == "Risk") | [.options[].name] | join(",")')
-  [ "$risk_options" = "Standard,Elevated" ] || fail "existing Risk options conflict"
-fi
-
-rulesets=$(gh api -H "X-GitHub-Api-Version: $API_VERSION" "repos/$OWNER/$REPOSITORY/rulesets") || fail "cannot inspect repository rulesets"
-ruleset_count=$(printf '%s' "$rulesets" | jq '[.[] | select(.name == "software-factory-development")] | length')
+ruleset_pages=$(gh api -H "X-GitHub-Api-Version: $API_VERSION" --paginate "repos/$OWNER/$REPOSITORY/rulesets?per_page=100") || fail "cannot inspect repository rulesets"
+rulesets=$(printf '%s\n' "$ruleset_pages" | jq -s 'if length > 0 and all(.[]; type == "array") then add else error("invalid ruleset pages") end') || fail "invalid ruleset response"
+ruleset_count=$(printf '%s' "$rulesets" | jq '[.[] | select(.name == "software-factory-development")] | length') || fail "invalid ruleset response"
 [ "$ruleset_count" -le 1 ] || fail "multiple factory rulesets exist"
 if [ "$ruleset_count" -eq 1 ]; then
   existing_ruleset_id=$(printf '%s' "$rulesets" | jq -r '.[] | select(.name == "software-factory-development") | .id')
   existing_ruleset=$(gh api -H "X-GitHub-Api-Version: $API_VERSION" "repos/$OWNER/$REPOSITORY/rulesets/$existing_ruleset_id") || fail "cannot inspect factory ruleset"
-  printf '%s' "$existing_ruleset" | jq -e --arg check "$REQUIRED_CHECK" '
+fi
+
+# A newly created workflow publishes a job named verify. For existing CI,
+# infer a name only when the default branch exposes exactly one unique check.
+# Reusing the old ruleset check supports a rerun before the new job first runs.
+if [ "$workflow_count" -eq 0 ]; then
+  [ "$REQUIRED_CHECK_EXPLICIT" -eq 0 ] || [ "$REQUIRED_CHECK" = verify ] || fail "the Python CI starter publishes 'verify'; remove --required-check or use verify"
+  REQUIRED_CHECK=verify
+else
+  # Infer only from a check that GitHub has actually published. An explicit
+  # name is needed when the branch has no runs or publishes several jobs. A
+  # caller can select a pull-request-only check that has not run on main.
+  if [ "$REQUIRED_CHECK_EXPLICIT" -eq 0 ]; then
+    check_runs=$(gh api -H "X-GitHub-Api-Version: $API_VERSION" "repos/$OWNER/$REPOSITORY/commits/$default_branch/check-runs?per_page=100") || fail "cannot inspect published CI checks"
+    check_count=$(printf '%s' "$check_runs" | jq -e '.total_count') || fail "invalid check-run response"
+    [ "$check_count" -le 100 ] || fail "check lookup is incomplete; pass --required-check NAME after inspecting GitHub"
+    check_names=$(printf '%s' "$check_runs" | jq -r '[.check_runs[].name] | unique | .[]') || fail "invalid check-run response"
+    unique_check_count=$(printf '%s\n' "$check_names" | sed '/^$/d' | wc -l | tr -d ' ')
+    if [ "$unique_check_count" -eq 1 ]; then
+      REQUIRED_CHECK=$check_names
+    elif [ "$unique_check_count" -eq 0 ] && [ "$ruleset_count" -eq 1 ]; then
+      # A newly installed workflow may not have run yet. Reuse the check from
+      # its existing factory ruleset, then validate the whole ruleset below.
+      REQUIRED_CHECK=$(printf '%s' "$existing_ruleset" | jq -r '[.rules[] | select(.type == "required_status_checks") | .parameters.required_status_checks[].context] | unique | if length == 1 then .[0] else empty end') || fail "cannot inspect factory check"
+      [ -n "$REQUIRED_CHECK" ] || fail "cannot infer one CI check; pass --required-check NAME"
+    else
+      fail "cannot infer one CI check; pass --required-check NAME"
+    fi
+  fi
+fi
+
+# Compare the full protection contract, not just the ruleset name. In
+# particular, excluding main would cancel an otherwise correct include rule.
+# This function reads one JSON ruleset from stdin and returns jq's status.
+ruleset_matches() {
+  jq -e --arg check "$REQUIRED_CHECK" '
+    .target == "branch" and
     .enforcement == "active" and
-    (.conditions.ref_name.include | contains(["~DEFAULT_BRANCH"])) and
-    ([.rules[].type] | contains(["deletion", "non_fast_forward", "pull_request", "required_status_checks"])) and
-    (any(.rules[]; .type == "pull_request" and .parameters.required_approving_review_count == 0)) and
-    (any(.rules[]; .type == "required_status_checks" and any(.parameters.required_status_checks[]; .context == $check)))
-  ' >/dev/null || fail "existing factory ruleset conflicts"
+    .conditions.ref_name.include == ["~DEFAULT_BRANCH"] and
+    .conditions.ref_name.exclude == [] and
+    (.bypass_actors // []) == [] and
+    ([.rules[].type] | sort) == (["deletion", "non_fast_forward", "pull_request", "required_status_checks"] | sort) and
+    (any(.rules[]; .type == "pull_request" and
+      .parameters.dismiss_stale_reviews_on_push == true and
+      .parameters.require_code_owner_review == false and
+      .parameters.require_last_push_approval == false and
+      .parameters.required_approving_review_count == 0 and
+      .parameters.required_review_thread_resolution == true)) and
+    (any(.rules[]; .type == "required_status_checks" and
+      .parameters.strict_required_status_checks_policy == true and
+      .parameters.do_not_enforce_on_create == true and
+      (.parameters.required_status_checks | length) == 1 and
+      .parameters.required_status_checks[0].context == $check))
+  ' >/dev/null
+}
+
+if [ "$ruleset_count" -eq 1 ]; then
+  printf '%s' "$existing_ruleset" | ruleset_matches || fail "existing factory ruleset conflicts"
+fi
+
+# Include closed Projects in the lookup so a same-title closed board is not
+# mistaken for an available name. A saturated result cannot prove uniqueness.
+PROJECT_SCAN_LIMIT=1000
+projects=$(gh project list --owner "$OWNER" --closed --limit "$PROJECT_SCAN_LIMIT" --format json) || fail "cannot list Projects"
+project_total=$(printf '%s' "$projects" | jq '.projects | length') || fail "invalid Project response"
+[ "$project_total" -lt "$PROJECT_SCAN_LIMIT" ] || fail "Project lookup reached the safety limit; narrow or clean up the owner before applying"
+project_count=$(printf '%s' "$projects" | jq --arg title "$FACTORY_PROJECT_TITLE" '[.projects[] | select(.title == $title)] | length') || fail "invalid Project response"
+[ "$project_count" -le 1 ] || fail "multiple factory Projects have the requested title"
+
+PROJECT_CREATED=0
+# Only a new Project receives the marker here. An existing same-title Project
+# is inspected next and will be rejected unless it already carries that marker.
+if [ "$project_count" -eq 0 ]; then
+  project_number=$(gh project create --owner "$OWNER" --title "$FACTORY_PROJECT_TITLE" --format json --jq '.number') || fail "cannot create Project"
+  PROJECT_CREATED=1
+  gh project edit "$project_number" --owner "$OWNER" --description "$FACTORY_DESCRIPTION" >/dev/null || fail "cannot mark new factory Project"
+else
+  project_number=$(printf '%s' "$projects" | jq -r --arg title "$FACTORY_PROJECT_TITLE" '.projects[] | select(.title == $title) | .number')
+fi
+
+project_details=$(gh project view "$project_number" --owner "$OWNER" --format json) || fail "cannot inspect factory Project"
+# Check identity, open state, and the marker before modifying fields or links.
+project_id=$(printf '%s' "$project_details" | jq -r '.id // empty') || fail "cannot resolve Project ID"
+[ -n "$project_id" ] || fail "factory Project has no ID"
+actual_project_title=$(printf '%s' "$project_details" | jq -r '.title // empty') || fail "cannot inspect factory Project title"
+[ "$actual_project_title" = "$FACTORY_PROJECT_TITLE" ] || fail "factory Project was renamed during setup"
+[ "$(printf '%s' "$project_details" | jq -r '.closed')" = false ] || fail "factory Project is closed"
+project_description=$(printf '%s' "$project_details" | jq -r '.shortDescription // empty') || fail "cannot inspect factory Project description"
+[ "$project_description" = "$FACTORY_DESCRIPTION" ] || fail "same-named Project is not marked as factory-owned; leaving it untouched"
+
+# GitHub's field-list command paginates. Request a large page and reject a
+# result at the limit, since a hidden Status or Risk field would be dangerous.
+fields=$(gh project field-list "$project_number" --owner "$OWNER" --limit "$PROJECT_FIELD_LIMIT" --format json) || fail "cannot list Project fields"
+field_count=$(printf '%s' "$fields" | jq -e '.fields | length') || fail "invalid field response"
+[ "$field_count" -lt "$PROJECT_FIELD_LIMIT" ] || fail "Project field lookup reached the safety limit"
+status_count=$(printf '%s' "$fields" | jq '[.fields[] | select(.name == "Status")] | length') || fail "invalid field response"
+[ "$status_count" -eq 1 ] || fail "Project must contain exactly one Status field"
+status_options=$(printf '%s' "$fields" | jq -r '.fields[] | select(.name == "Status") | [.options[].name] | join(",")')
+
+NEED_STATUS_UPDATE=0
+# Replacing single-select options can invalidate values on existing cards.
+# Consequently, only the Project created in this run gets new Status options.
+if [ "$PROJECT_CREATED" -eq 1 ]; then
+  NEED_STATUS_UPDATE=1
+elif [ "$status_options" != "Inbox,Ready,In Progress,In Review,Done" ]; then
+  fail "existing factory Project has different Status options; leaving its cards untouched"
+fi
+
+risk_count=$(printf '%s' "$fields" | jq '[.fields[] | select(.name == "Risk")] | length')
+# A missing Risk field is safe to create; different existing options are not.
+[ "$risk_count" -le 1 ] || fail "Project has multiple Risk fields"
+if [ "$risk_count" -eq 1 ]; then
+  risk_options=$(printf '%s' "$fields" | jq -r '.fields[] | select(.name == "Risk") | [.options[].name] | join(",")')
+  [ "$risk_options" = "Standard,Elevated" ] || fail "existing Risk options conflict"
 fi
 
 # Set visibility only on a Project the factory created. For a pre-existing
@@ -175,35 +253,50 @@ if [ "$PROJECT_CREATED" -eq 1 ]; then
   project_visibility=$(printf '%s' "$VISIBILITY" | tr '[:lower:]' '[:upper:]')
   gh project edit "$project_number" --owner "$OWNER" --visibility "$project_visibility" >/dev/null || fail "cannot set Project visibility"
 else
-  current_public=$(gh project view "$project_number" --owner "$OWNER" --format json --jq '.public') || fail "cannot inspect Project visibility"
+  current_public=$(printf '%s' "$project_details" | jq -r '.public') || fail "cannot inspect Project visibility"
   [ "$current_public" = "$desired_public" ] || fail "existing Project visibility does not match --visibility $VISIBILITY"
 fi
 
 if [ "$NEED_STATUS_UPDATE" -eq 1 ]; then
+  # GitHub exposes option replacement through GraphQL. The colors and short
+  # descriptions are visible on the newly created Project's Status field.
   status_id=$(printf '%s' "$fields" | jq -r '.fields[] | select(.name == "Status") | .id')
   payload=$(jq -n --arg id "$status_id" '{query:"mutation($input: UpdateProjectV2FieldInput!) { updateProjectV2Field(input: $input) { projectV2Field { ... on ProjectV2SingleSelectField { id } } } }",variables:{input:{fieldId:$id,singleSelectOptions:[{name:"Inbox",color:"GRAY",description:"Unresolved intent"},{name:"Ready",color:"BLUE",description:"Approved and unblocked"},{name:"In Progress",color:"YELLOW",description:"Implementation active"},{name:"In Review",color:"PURPLE",description:"Published for review"},{name:"Done",color:"GREEN",description:"Merged and synchronized"}]}}}') || fail "cannot build Status update"
   printf '%s' "$payload" | gh api graphql --input - >/dev/null || fail "cannot configure Status"
 fi
 
-fields=$(gh project field-list "$project_number" --owner "$OWNER" --format json) || fail "cannot refresh Project fields"
+# Read repository links, field database IDs, and views in one GraphQL query.
+# Each connection reports whether its first 100 results are complete. Refuse
+# to infer an absent link, field, or Board from a partial result.
+# GraphQL variables are intentionally literal here.
+# shellcheck disable=SC2016
+project_query='query($id: ID!) { node(id: $id) { ... on ProjectV2 { repositories(first: 100) { pageInfo { hasNextPage } nodes { nameWithOwner } } fields(first: 100) { pageInfo { hasNextPage } nodes { ... on ProjectV2SingleSelectField { databaseId name } } } views(first: 100) { pageInfo { hasNextPage } nodes { id name layout verticalGroupByFields(first: 10) { nodes { ... on ProjectV2Field { name } ... on ProjectV2SingleSelectField { name } } } } } } } }'
+project_state_complete() {
+  jq -e '.data.node.repositories.pageInfo.hasNextPage == false and .data.node.fields.pageInfo.hasNextPage == false and .data.node.views.pageInfo.hasNextPage == false' >/dev/null
+}
+project_state=$(gh api graphql -f query="$project_query" -F id="$project_id") || fail "cannot inspect Project views and links"
+printf '%s' "$project_state" | project_state_complete || fail "Project link, field, or view lookup is incomplete; leaving it untouched"
+# Delay creation of the missing Risk field until the Project link and view
+# lookup is known to be complete. A large reused Project should stop without
+# a partial field change.
 if [ "$risk_count" -eq 0 ]; then
   gh project field-create "$project_number" --owner "$OWNER" --name Risk --data-type SINGLE_SELECT --single-select-options Standard,Elevated >/dev/null || fail "cannot create Risk"
 fi
-
-# GraphQL variables are intentionally literal here.
-# shellcheck disable=SC2016
-project_query='query($id: ID!) { node(id: $id) { ... on ProjectV2 { repositories(first: 100) { nodes { nameWithOwner } } fields(first: 100) { nodes { ... on ProjectV2SingleSelectField { databaseId name } } } views(first: 100) { nodes { id name layout verticalGroupByFields(first: 10) { nodes { ... on ProjectV2Field { name } ... on ProjectV2SingleSelectField { name } } } } } } } }'
-project_state=$(gh api graphql -f query="$project_query" -F id="$project_id") || fail "cannot inspect Project views and links"
 linked=$(printf '%s' "$project_state" | jq --arg repo "$OWNER/$REPOSITORY" '[.data.node.repositories.nodes[] | select(.nameWithOwner == $repo)] | length')
+# Linking is idempotent: create the link only when it is absent, then read back
+# the relation rather than assuming the command succeeded semantically.
 [ "$linked" -le 1 ] || fail "repository is linked to Project more than once"
 if [ "$linked" -eq 0 ]; then
   gh project link "$project_number" --owner "$OWNER" --repo "$REPOSITORY" >/dev/null 2>&1 || fail "cannot link repository to Project"
   project_state=$(gh api graphql -f query="$project_query" -F id="$project_id") || fail "cannot verify Project link"
+  printf '%s' "$project_state" | project_state_complete || fail "Project link verification is incomplete"
   linked=$(printf '%s' "$project_state" | jq --arg repo "$OWNER/$REPOSITORY" '[.data.node.repositories.nodes[] | select(.nameWithOwner == $repo)] | length')
 fi
 [ "$linked" -eq 1 ] || fail "repository was not linked to Project"
 
 board_count=$(printf '%s' "$project_state" | jq '[.data.node.views.nodes[] | select(.layout == "BOARD_LAYOUT" and any(.verticalGroupByFields.nodes[]?; .name == "Status"))] | length')
+# A board qualifies only when it is grouped by Status. The REST endpoint for
+# creating a missing view differs between user and organization owners.
 if [ "$board_count" -eq 0 ]; then
   status_database_id=$(printf '%s' "$project_state" | jq -r '.data.node.fields.nodes[] | select(.name == "Status") | .databaseId')
   [ -n "$status_database_id" ] && [ "$status_database_id" != null ] || fail "cannot resolve Status database ID"
@@ -215,13 +308,16 @@ if [ "$board_count" -eq 0 ]; then
   view_payload=$(jq -n --argjson status "$status_database_id" '{name:"Board",layout:"board",vertical_group_by:[$status]}') || fail "cannot build Status board"
   printf '%s' "$view_payload" | gh api -H "X-GitHub-Api-Version: $API_VERSION" --method POST "$view_endpoint" --input - >/dev/null || fail "cannot create Status board"
   project_state=$(gh api graphql -f query="$project_query" -F id="$project_id") || fail "cannot verify Status board"
+  printf '%s' "$project_state" | project_state_complete || fail "Project Board verification is incomplete"
   board_count=$(printf '%s' "$project_state" | jq '[.data.node.views.nodes[] | select(.layout == "BOARD_LAYOUT" and any(.verticalGroupByFields.nodes[]?; .name == "Status"))] | length')
 fi
 [ "$board_count" -ge 1 ] || fail "Project has no Board view grouped by Status"
 
 if [ "$workflow_count" -eq 0 ]; then
+  # The starter CI is intentionally small: one verify job runs Ruff lint and
+  # formatting checks on PRs and default-branch pushes. It never edits code.
   workflow=$(cat <<'EOF'
-name: CI
+name: Python quality
 
 on:
   pull_request:
@@ -236,43 +332,42 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Check for merge conflict markers
-        run: |
-          if git grep -nIE '^(<{7}|>{7})( |$)' -- .; then
-            echo "merge conflict markers found" >&2
-            exit 1
-          fi
-          echo "no conflict markers"
+      - uses: astral-sh/ruff-action@v4.1.0
+        with:
+          version: "0.17.1"
+          args: "check ."
+      - name: Check Python formatting
+        run: ruff format --check .
 EOF
 )
   workflow=${workflow//__DEFAULT_BRANCH__/$default_branch}
+  # The GitHub Contents API accepts base64 content plus a commit message.
   workflow_content=$(printf '%s\n' "$workflow" | base64 | tr -d '\n') || fail "cannot encode CI starter"
-  workflow_payload=$(jq -n --arg message "Add minimal development CI" --arg content "$workflow_content" --arg branch "$default_branch" '{message:$message,content:$content,branch:$branch}') || fail "cannot build CI starter"
+  workflow_payload=$(jq -n --arg message "Add Python quality CI" --arg content "$workflow_content" --arg branch "$default_branch" '{message:$message,content:$content,branch:$branch}') || fail "cannot build CI starter"
   printf '%s' "$workflow_payload" | gh api -H "X-GitHub-Api-Version: $API_VERSION" --method PUT "repos/$OWNER/$REPOSITORY/contents/.github/workflows/ci.yml" --input - >/dev/null || fail "cannot add CI starter"
 fi
 
 if [ "$ruleset_count" -eq 0 ]; then
+  # Create protection only when no factory ruleset exists. Existing protection
+  # was validated above and is deliberately left untouched.
   ruleset=$(jq -n --arg check "$REQUIRED_CHECK" '{name:"software-factory-development",target:"branch",enforcement:"active",conditions:{ref_name:{include:["~DEFAULT_BRANCH"],exclude:[]}},rules:[{type:"deletion"},{type:"non_fast_forward"},{type:"pull_request",parameters:{dismiss_stale_reviews_on_push:true,require_code_owner_review:false,require_last_push_approval:false,required_approving_review_count:0,required_review_thread_resolution:true}},{type:"required_status_checks",parameters:{required_status_checks:[{context:$check}],strict_required_status_checks_policy:true,do_not_enforce_on_create:true}}]}') || fail "cannot build ruleset"
   printf '%s' "$ruleset" | gh api -H "X-GitHub-Api-Version: $API_VERSION" --method POST "repos/$OWNER/$REPOSITORY/rulesets" --input - >/dev/null || fail "cannot create ruleset"
 fi
 
 workflows=$(gh api -H "X-GitHub-Api-Version: $API_VERSION" "repos/$OWNER/$REPOSITORY/actions/workflows?per_page=100") || fail "cannot verify repository workflows"
+# Read back remote state after all writes. A successful API exit alone is not
+# enough to prove the required workflow, ruleset, and field options now exist.
 workflow_count=$(printf '%s' "$workflows" | jq '.total_count') || fail "invalid workflows response"
 [ "$workflow_count" -ge 1 ] || fail "repository has no CI workflow"
 
-rulesets=$(gh api -H "X-GitHub-Api-Version: $API_VERSION" "repos/$OWNER/$REPOSITORY/rulesets") || fail "cannot verify repository rulesets"
+ruleset_pages=$(gh api -H "X-GitHub-Api-Version: $API_VERSION" --paginate "repos/$OWNER/$REPOSITORY/rulesets?per_page=100") || fail "cannot verify repository rulesets"
+rulesets=$(printf '%s\n' "$ruleset_pages" | jq -s 'if length > 0 and all(.[]; type == "array") then add else error("invalid ruleset pages") end') || fail "invalid ruleset response"
 ruleset_id=$(printf '%s' "$rulesets" | jq -r '.[] | select(.name == "software-factory-development") | .id')
 [ -n "$ruleset_id" ] && [ "$ruleset_id" != null ] || fail "factory ruleset is missing after apply"
 ruleset_state=$(gh api -H "X-GitHub-Api-Version: $API_VERSION" "repos/$OWNER/$REPOSITORY/rulesets/$ruleset_id") || fail "cannot verify factory ruleset"
-printf '%s' "$ruleset_state" | jq -e --arg check "$REQUIRED_CHECK" '
-  .enforcement == "active" and
-  (.conditions.ref_name.include | contains(["~DEFAULT_BRANCH"])) and
-  ([.rules[].type] | contains(["deletion", "non_fast_forward", "pull_request", "required_status_checks"])) and
-  (any(.rules[]; .type == "pull_request" and .parameters.required_approving_review_count == 0)) and
-  (any(.rules[]; .type == "required_status_checks" and any(.parameters.required_status_checks[]; .context == $check)))
-' >/dev/null || fail "existing factory ruleset conflicts"
+printf '%s' "$ruleset_state" | ruleset_matches || fail "factory ruleset verification failed"
 
-fields=$(gh project field-list "$project_number" --owner "$OWNER" --format json) || fail "cannot verify Project fields"
+fields=$(gh project field-list "$project_number" --owner "$OWNER" --limit "$PROJECT_FIELD_LIMIT" --format json) || fail "cannot verify Project fields"
 final_status=$(printf '%s' "$fields" | jq -r '.fields[] | select(.name == "Status") | [.options[].name] | join(",")')
 final_risk=$(printf '%s' "$fields" | jq -r '.fields[] | select(.name == "Risk") | [.options[].name] | join(",")')
 [ "$final_status" = "Inbox,Ready,In Progress,In Review,Done" ] || fail "Status verification failed"
