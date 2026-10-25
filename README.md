@@ -45,7 +45,7 @@ Preview the intended resources:
       --project-title "Development" \
       --visibility private
 
-Run the same command with --apply when ready. The configurator always targets a Project named "Development - Software Factory" in this example. An existing "Development" Project and its cards remain untouched. The factory Project carries a description marker; a same-named Project without that marker is treated as a conflict.
+Run the same command with --apply when ready. A repository created by setup gets main as its default branch, regardless of the owner's GitHub setting; an existing repository keeps its default branch. The configurator always targets a Project named "Development - Software Factory" in this example. An existing "Development" Project and its cards remain untouched. The factory Project carries a description marker; a same-named Project without that marker is treated as a conflict.
 
 The factory Project has Status options Inbox, Ready, In Progress, In Review, and Done, plus Risk options Standard and Elevated. It is linked to the repository and has a Board view grouped by Status. Reusing a marked Project requires compatible fields and visibility. Status options on a Project that holds cards are never rewritten.
 
@@ -90,13 +90,13 @@ Standard work can proceed under an approved workflow policy. Elevated work needs
 
 ### Maintain
 
-After merge, fast-forward the local default branch, verify it matches the remote object ID, and rerun the crucial target-project check. Read the default branch name with `gh repo view --json defaultBranchRef --jq .defaultBranchRef.name`:
+After merge, fast-forward local main, verify it matches the remote object ID, and rerun the crucial target-project check. For an existing repository with another default branch, use that name instead of main:
 
     git fetch origin
-    git switch DEFAULT_BRANCH
-    git merge --ff-only origin/DEFAULT_BRANCH
-    git rev-parse DEFAULT_BRANCH
-    git rev-parse origin/DEFAULT_BRANCH
+    git switch main
+    git merge --ff-only origin/main
+    git rev-parse main
+    git rev-parse origin/main
 
 Branch and worktree cleanup are separate decisions. Keep both Projects during migration; move existing cards only through a separately agreed migration.
 

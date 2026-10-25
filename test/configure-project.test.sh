@@ -45,18 +45,29 @@ case "$1 $2" in
   # The default repository already exists. repo-error represents a network
   # failure, which must not be confused with a genuinely missing repository.
   # GH_TEST_REPO_VISIBILITY sets the visibility of that repository.
+  # In new-repo mode the repository appears after creation on the owner's
+  # default branch name, master, until the configurator renames it.
   "repo view")
     if [ "${GH_TEST_MODE:-ok}" = repo-error ]; then
       printf 'error: could not connect to github.com\n' >&2
       exit 1
     fi
-    jq -n --arg visibility "${GH_TEST_REPO_VISIBILITY:-PRIVATE}" '{visibility:$visibility,defaultBranchRef:{name:"main"}}'
+    branch=main
+    if [ "${GH_TEST_MODE:-ok}" = new-repo ]; then
+      if ! grep -q 'repo create' "$GH_TEST_LOG"; then
+        printf 'GraphQL: Could not resolve to a Repository with the name test/project.\n' >&2
+        exit 1
+      fi
+      grep -q 'POST repos/test/project/branches/master/rename' "$GH_TEST_LOG" || branch=master
+    fi
+    jq -n --arg visibility "${GH_TEST_REPO_VISIBILITY:-PRIVATE}" --arg branch "$branch" '{visibility:$visibility,defaultBranchRef:{name:$branch}}'
     ;;
+  "repo create") exit 0 ;;
   "api users/test") printf '{"id":42,"type":"%s"}\n' "${GH_TEST_OWNER_TYPE:-User}" ;;
   # In no-ci mode, a successful Contents API write makes the workflow appear on
   # the next read, modeling GitHub state changing during one apply operation.
   "api repos/test/project/actions/workflows?per_page=100")
-    if [ "${GH_TEST_MODE:-ok}" = no-ci ] && ! grep -q 'contents/.github/workflows/ci.yml' "$GH_TEST_LOG"; then
+    if { [ "${GH_TEST_MODE:-ok}" = no-ci ] || [ "${GH_TEST_MODE:-ok}" = new-repo ]; } && ! grep -q 'contents/.github/workflows/ci.yml' "$GH_TEST_LOG"; then
       printf '%s\n' '{"total_count":0,"workflows":[]}'
     else
       printf '%s\n' '{"total_count":1,"workflows":[{"path":".github/workflows/project.yml"}]}'
@@ -77,7 +88,7 @@ case "$1 $2" in
     # Only the suffixed factory board may be created or reused.
     case "${GH_TEST_MODE:-ok}" in
       limit) jq -n '{projects: [range(0; 1000) | {title: ("Project " + tostring), number: .}]}' ;;
-      new-project) printf '%s\n' '{"projects":[{"title":"Development","number":3}]}' ;;
+      new-project|new-repo) printf '%s\n' '{"projects":[{"title":"Development","number":3}]}' ;;
       *) printf '%s\n' '{"projects":[{"title":"Development","number":3},{"title":"Development - Software Factory","number":7}]}' ;;
     esac
     ;;
@@ -97,7 +108,7 @@ case "$1 $2" in
     case "${GH_TEST_MODE:-ok}" in
       field-limit) jq -n '{fields: [range(0; 1000) | {name: ("Field " + tostring)}]}' ;;
       many-fields) jq -n '{fields: ([{id:"status",name:"Status",options:[{name:"Inbox"},{name:"Ready"},{name:"In Progress"},{name:"In Review"},{name:"Done"}]}] + [range(0; 29) | {name:("Field " + tostring)}] + [{id:"risk",name:"Risk",options:[{name:"Standard"},{name:"Elevated"}]}])}' ;;
-      new-project|default-status)
+      new-project|new-repo|default-status)
         if ! grep -q 'graphql --input' "$GH_TEST_LOG"; then
           printf '%s\n' '{"fields":[{"id":"status","name":"Status","options":[{"name":"Todo"},{"name":"In Progress"},{"name":"Done"}]}]}'
         elif ! grep -q 'project field-create' "$GH_TEST_LOG"; then
@@ -121,7 +132,7 @@ case "$1 $2" in
     ;;
   "api repos/test/project/rulesets?per_page=100")
     # foreign-ci starts without the factory ruleset; after POST it appears.
-    if [ "${GH_TEST_MODE:-ok}" = foreign-ci ] && ! grep -q 'POST repos/test/project/rulesets' "$GH_TEST_LOG"; then
+    if { [ "${GH_TEST_MODE:-ok}" = foreign-ci ] || [ "${GH_TEST_MODE:-ok}" = new-repo ]; } && ! grep -q 'POST repos/test/project/rulesets' "$GH_TEST_LOG"; then
       printf '%s\n' '[]'
     else
       printf '%s\n' '[{"id":9,"name":"software-factory-development"}]'
@@ -143,7 +154,7 @@ case "$1 $2" in
       *"PUT repos/test/project/contents/.github/workflows/ci.yml"*)
         if [ -n "${GH_TEST_CI_BODY:-}" ]; then cat > "$GH_TEST_CI_BODY"; fi
         exit 0 ;;
-      *"POST users/test/projectsV2/7/views"*|*"POST orgs/test/projectsV2/7/views"*|*"POST repos/test/project/rulesets"*) exit 0 ;;
+      *"POST users/test/projectsV2/7/views"*|*"POST orgs/test/projectsV2/7/views"*|*"POST repos/test/project/rulesets"*|*"POST repos/test/project/branches/master/rename"*) exit 0 ;;
       *) printf 'unexpected mutating API call: %s\n' "$*" >&2; exit 90 ;;
     esac
     ;;
@@ -195,6 +206,15 @@ ci_yaml=$(jq -r '.content' "$CI_BODY" | base64 --decode)
 printf '%s' "$ci_yaml" | grep -q 'ruff format --check' || fail "Python CI has no formatting check"
 printf '%s' "$ci_yaml" | grep -q 'check .' || fail "Python CI has no lint check"
 printf '%s' "$ci_yaml" | grep -q 'branches: \["main"\]' || fail "Python CI did not pin push to the default branch"
+
+: > "$LOG"
+# A new repository starts on the owner's default branch name. Setup renames it
+# to main before CI and protection are pinned to that branch.
+GH_TEST_MODE=new-repo GH_TEST_CI_BODY="$CI_BODY" run_configure --apply >/dev/null || fail "new repository setup failed"
+grep -q 'repo create test/project --private --add-readme' "$LOG" || fail "missing repository was not created"
+grep -q 'POST repos/test/project/branches/master/rename -f new_name=main' "$LOG" || fail "new repository branch was not renamed to main"
+jq -r '.content' "$CI_BODY" | base64 --decode | grep -q 'branches: \["main"\]' || fail "new repository CI was not pinned to main"
+jq -e '.branch == "main"' "$CI_BODY" >/dev/null || fail "new repository CI was not committed to main"
 
 : > "$LOG"
 # GitHub uses different view endpoints for user and organization owners.

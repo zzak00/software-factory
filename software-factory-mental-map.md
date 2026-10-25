@@ -10,7 +10,7 @@ GitHub issue / discussion
     -> independent code review
     -> [In Review] Publish reviewed head and await CI
     -> human Plannotator review of that same head
-    -> merge -> [Done] synchronize default branch and verify
+    -> merge -> [Done] synchronize main and verify
 ```
 
 ## Set up the working space
@@ -88,9 +88,9 @@ A product requirements document can be a source for product-heavy work, but the 
 
 ## 6. Maintain: align the local checkout with the merge
 
-**Tools:** `git fetch origin`, `git switch DEFAULT_BRANCH`, `git merge --ff-only origin/DEFAULT_BRANCH`, and `git rev-parse` for both the local and remote default branch. Run the crucial target-repository check once more.
+**Tools:** `git fetch origin`, `git switch main`, `git merge --ff-only origin/main`, and `git rev-parse` for both local and remote main. An existing repository with another default branch uses that name instead. Run the crucial target-repository check once more.
 
-**Work:** Confirm the local default branch names the same object as the remote and that the merged result still passes its key check. Decide on branch and worktree cleanup separately. Migrate old Project cards only through a separately agreed migration.
+**Work:** Confirm local main names the same object as the remote and that the merged result still passes its key check. Decide on branch and worktree cleanup separately. Migrate old Project cards only through a separately agreed migration.
 
 **Completion check:** Confirm the pull request merged, the issue closed, the Project item is Done, and required checks passed. Before deleting a branch or worktree, inspect its identity, cleanliness, and unpushed state and obtain the appropriate cleanup decision.
 
