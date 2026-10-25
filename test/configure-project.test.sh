@@ -44,12 +44,13 @@ case "$1 $2" in
   "auth status") exit 0 ;;
   # The default repository already exists. repo-error represents a network
   # failure, which must not be confused with a genuinely missing repository.
+  # GH_TEST_REPO_VISIBILITY sets the visibility of that repository.
   "repo view")
     if [ "${GH_TEST_MODE:-ok}" = repo-error ]; then
       printf 'error: could not connect to github.com\n' >&2
       exit 1
     fi
-    printf '%s\n' '{"visibility":"PRIVATE","defaultBranchRef":{"name":"main"}}'
+    jq -n --arg visibility "${GH_TEST_REPO_VISIBILITY:-PRIVATE}" '{visibility:$visibility,defaultBranchRef:{name:"main"}}'
     ;;
   "api users/test") printf '{"id":42,"type":"%s"}\n' "${GH_TEST_OWNER_TYPE:-User}" ;;
   # In no-ci mode, a successful Contents API write makes the workflow appear on
@@ -239,6 +240,17 @@ if grep -q 'project create' "$LOG"; then fail "recovery created another Project"
 export GH_TEST_PROJECT_ITEMS=3
 expect_failure_without_mutation default-status
 unset GH_TEST_PROJECT_ITEMS
+
+# GitHub creates a Project as private. A public setup interrupted before its
+# visibility change leaves an empty private Project, which a rerun finishes.
+: > "$LOG"
+GH_TEST_REPO_VISIBILITY=PUBLIC GH_TEST_MODE=default-status run_configure --apply --visibility public >/dev/null || fail "interrupted public factory Project was not recovered"
+grep -q 'project edit 7 --owner test --visibility PUBLIC' "$LOG" || fail "interrupted factory Project visibility was not configured"
+
+# A configured Project keeps its own visibility; a mismatch stops setup.
+export GH_TEST_REPO_VISIBILITY=PUBLIC
+expect_failure_without_mutation ok --visibility public
+unset GH_TEST_REPO_VISIBILITY
 
 : > "$LOG"
 # Verify ordering: ruleset conflict is detected before creating a Project.

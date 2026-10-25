@@ -227,15 +227,16 @@ status_count=$(printf '%s' "$fields" | jq '[.fields[] | select(.name == "Status"
 [ "$status_count" -eq 1 ] || fail "Project must contain exactly one Status field"
 status_options=$(printf '%s' "$fields" | jq -r '.fields[] | select(.name == "Status") | [.options[].name] | join(",")')
 
-NEED_STATUS_UPDATE=0
+PROJECT_UNUSED=0
 # Replacing single-select options can invalidate values on existing cards.
-# Consequently, new options go only to the Project created in this run, or to a
-# marked Project that a previous run left with GitHub's defaults and no cards.
+# Consequently, setup finishes Status and visibility only on an unused Project:
+# one created in this run, or a marked Project that a previous run left with
+# GitHub's defaults and no cards.
 project_items=$(printf '%s' "$project_details" | jq -e '.items.totalCount') || fail "cannot count factory Project cards"
 if [ "$PROJECT_CREATED" -eq 1 ]; then
-  NEED_STATUS_UPDATE=1
+  PROJECT_UNUSED=1
 elif [ "$status_options" = "Todo,In Progress,Done" ] && [ "$project_items" -eq 0 ]; then
-  NEED_STATUS_UPDATE=1
+  PROJECT_UNUSED=1
 elif [ "$status_options" != "Inbox,Ready,In Progress,In Review,Done" ]; then
   fail "existing factory Project has different Status options; leaving its cards untouched"
 fi
@@ -248,12 +249,12 @@ if [ "$risk_count" -eq 1 ]; then
   [ "$risk_options" = "Standard,Elevated" ] || fail "existing Risk options conflict"
 fi
 
-# Set visibility only on a Project the factory created. For a pre-existing
-# Project, verify it already matches and stop on a mismatch rather than silently
-# overwriting project-owned visibility.
+# Set visibility only on an unused Project, which GitHub created as private.
+# For a configured Project, verify it already matches and stop on a mismatch
+# rather than silently overwriting project-owned visibility.
 desired_public=false
 [ "$VISIBILITY" = public ] && desired_public=true
-if [ "$PROJECT_CREATED" -eq 1 ]; then
+if [ "$PROJECT_UNUSED" -eq 1 ]; then
   project_visibility=$(printf '%s' "$VISIBILITY" | tr '[:lower:]' '[:upper:]')
   gh project edit "$project_number" --owner "$OWNER" --visibility "$project_visibility" >/dev/null || fail "cannot set Project visibility"
 else
@@ -261,9 +262,9 @@ else
   [ "$current_public" = "$desired_public" ] || fail "existing Project visibility does not match --visibility $VISIBILITY"
 fi
 
-if [ "$NEED_STATUS_UPDATE" -eq 1 ]; then
+if [ "$PROJECT_UNUSED" -eq 1 ]; then
   # GitHub exposes option replacement through GraphQL. The colors and short
-  # descriptions are visible on the newly created Project's Status field.
+  # descriptions are visible on the unused Project's Status field.
   status_id=$(printf '%s' "$fields" | jq -r '.fields[] | select(.name == "Status") | .id')
   payload=$(jq -n --arg id "$status_id" '{query:"mutation($input: UpdateProjectV2FieldInput!) { updateProjectV2Field(input: $input) { projectV2Field { ... on ProjectV2SingleSelectField { id } } } }",variables:{input:{fieldId:$id,singleSelectOptions:[{name:"Inbox",color:"GRAY",description:"Unresolved intent"},{name:"Ready",color:"BLUE",description:"Approved and unblocked"},{name:"In Progress",color:"YELLOW",description:"Implementation active"},{name:"In Review",color:"PURPLE",description:"Published for review"},{name:"Done",color:"GREEN",description:"Merged and synchronized"}]}}}') || fail "cannot build Status update"
   printf '%s' "$payload" | gh api graphql --input - >/dev/null || fail "cannot configure Status"
@@ -291,7 +292,7 @@ linked=$(printf '%s' "$project_state" | jq --arg repo "$OWNER/$REPOSITORY" '[.da
 # the relation rather than assuming the command succeeded semantically.
 [ "$linked" -le 1 ] || fail "repository is linked to Project more than once"
 if [ "$linked" -eq 0 ]; then
-  gh project link "$project_number" --owner "$OWNER" --repo "$REPOSITORY" >/dev/null 2>&1 || fail "cannot link repository to Project"
+  gh project link "$project_number" --owner "$OWNER" --repo "$REPOSITORY" >/dev/null || fail "cannot link repository to Project"
   project_state=$(gh api graphql -f query="$project_query" -F id="$project_id") || fail "cannot verify Project link"
   printf '%s' "$project_state" | project_state_complete || fail "Project link verification is incomplete"
   linked=$(printf '%s' "$project_state" | jq --arg repo "$OWNER/$REPOSITORY" '[.data.node.repositories.nodes[] | select(.nameWithOwner == $repo)] | length')

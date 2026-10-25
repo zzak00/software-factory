@@ -49,14 +49,14 @@ Run the same command with --apply when ready. The configurator always targets a 
 
 The factory Project has Status options Inbox, Ready, In Progress, In Review, and Done, plus Risk options Standard and Elevated. It is linked to the repository and has a Board view grouped by Status. Reusing a marked Project requires compatible fields and visibility. Status options on a Project that holds cards are never rewritten.
 
-For a repository without CI, setup adds one Python quality workflow. Its verify job runs Ruff lint and a formatting check on pull requests and pushes to the default branch. These checks report issues but do not edit files. Run Ruff locally to fix them:
+For a repository without CI, setup adds one Python quality workflow. Its verify job runs Ruff lint and a formatting check on pull requests and pushes to the default branch. In a repository without Python files, verify passes without checking anything; add the project's own checks to that job or pass --required-check for existing CI. These checks report issues but do not edit files. Run Ruff locally to fix them:
 
     ruff check .
     ruff format .
 
 For a repository with CI, setup reads checks published on its default branch. If exactly one check name exists, it requires that check. If no check or several check names exist, pass --required-check NAME after confirming the check name in GitHub. This also supports checks that run only on pull requests. Existing workflows are preserved. The ruleset requires a pull request, the chosen check, resolved review threads, and an up-to-date branch; it blocks deletion and force pushes. A conflicting factory ruleset is reported and left untouched.
 
-The default command is a dry run. It does not contact GitHub, so the final check name and whether a Project will be reused are resolved during --apply. An interrupted creation before the Project receives its marker requires inspection before another run. After the marker, a rerun finishes an interrupted Project that still has GitHub's default Status options and no cards.
+The default command is a dry run. It does not contact GitHub, so the final check name and whether a Project will be reused are resolved during --apply. An interrupted creation before the Project receives its marker requires inspection before another run. After the marker, a rerun finishes the Status options and visibility of an interrupted Project that still has GitHub's default Status options and no cards.
 
 ## Development workflow
 
@@ -90,13 +90,13 @@ Standard work can proceed under an approved workflow policy. Elevated work needs
 
 ### Maintain
 
-After merge, fast-forward local main, verify it matches the remote object ID, and rerun the crucial target-project check:
+After merge, fast-forward the local default branch, verify it matches the remote object ID, and rerun the crucial target-project check. Read the default branch name with `gh repo view --json defaultBranchRef --jq .defaultBranchRef.name`:
 
     git fetch origin
-    git switch main
-    git merge --ff-only origin/main
-    git rev-parse main
-    git rev-parse origin/main
+    git switch DEFAULT_BRANCH
+    git merge --ff-only origin/DEFAULT_BRANCH
+    git rev-parse DEFAULT_BRANCH
+    git rev-parse origin/DEFAULT_BRANCH
 
 Branch and worktree cleanup are separate decisions. Keep both Projects during migration; move existing cards only through a separately agreed migration.
 
