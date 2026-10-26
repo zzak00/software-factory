@@ -1,5 +1,5 @@
 interface:
   display_name: "To Tickets"
-  short_description: "Split approved work into vertical tickets"
+  short_description: "Slice a product spec into blocked sub-issues"
 policy:
   allow_implicit_invocation: false

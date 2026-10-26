@@ -1,5 +1,5 @@
 interface:
   display_name: "Implement"
-  short_description: "Implement approved behavior and return evidence"
+  short_description: "Build approved work test-first and return evidence per AC"
 policy:
   allow_implicit_invocation: false

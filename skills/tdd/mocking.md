@@ -12,6 +12,7 @@ Don't mock:
 - Your own classes/modules
 - Internal collaborators
 - Anything you control
+
 ## Designing for Mockability
 
 At system boundaries, design interfaces that are easy to mock:
@@ -32,6 +33,7 @@ function processPayment(order) {
   return client.charge(order.total);
 }
 ```
+
 **2. Prefer SDK-style interfaces over generic fetchers**
 
 Create specific functions for each external operation instead of one generic function with conditional logic:
@@ -43,6 +45,7 @@ const api = {
   getOrders: (userId) => fetch(`/users/${userId}/orders`),
   createOrder: (data) => fetch('/orders', { method: 'POST', body: data }),
 };
+
 // BAD: Mocking requires conditional logic inside the mock
 const api = {
   fetch: (endpoint, options) => fetch(endpoint, options),

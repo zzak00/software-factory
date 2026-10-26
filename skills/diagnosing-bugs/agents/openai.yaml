@@ -1,0 +1,3 @@
+interface:
+  display_name: "Diagnosing Bugs"
+  short_description: "Reproduce first, then diagnose hard bugs and regressions"

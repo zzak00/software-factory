@@ -1,0 +1,5 @@
+interface:
+  display_name: "Architect"
+  short_description: "Sketch the shape and turn it into an approved plan"
+policy:
+  allow_implicit_invocation: false

@@ -1,0 +1,5 @@
+interface:
+  display_name: "Writing for Agents"
+  short_description: "Write skills and a repo's CLAUDE.md and AGENTS.md"
+policy:
+  allow_implicit_invocation: false

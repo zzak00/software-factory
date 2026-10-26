@@ -1,114 +1,143 @@
 # Software Factory mental map
 
-The factory takes an agreed change from intent to verified merged code. A person owns the decisions, repository state, publication, and final merge. Tools and optional skills help with particular steps; no skill automatically advances the next step.
+The factory takes a change from intent to verified merged code. The size of the work picks the track; every track passes the same gates. A person owns decisions, approvals, and merges.
 
-```text
-GitHub issue / discussion
-    -> [Inbox] Clarify intent
-    -> [Ready] Prepare exact-base worktree
-    -> [In Progress] Implement and verify
-    -> independent code review
-    -> [In Review] Publish reviewed head and await CI
-    -> human Plannotator review of that same head
-    -> merge -> [Done] synchronize main and verify
-```
+## 1. Pick the track
 
-## Set up the working space
+| Track | Use when | Route |
+| --- | --- | --- |
+| **Fast** | Hotfix, color or copy change: obvious, a few files, no interface, schema, auth, or dependency change | Clarify -> Prepare -> Implement -> Review -> Integrate -> Maintain |
+| **Standard** | Fits one reviewable PR (default) | Clarify -> Prepare -> Plan -> Implement -> Review -> Integrate -> Maintain |
+| **Product** | First product description or a large feature; more than one PR | Discovery -> each slice runs Standard |
 
-Run `scripts/configure-project.sh` first as a dry run, then with `--apply` for the chosen owner, repository, title, and visibility. It uses `gh` to inspect or create the repository, a dedicated GitHub Project, a default-branch ruleset, and, only when CI is absent, a Python quality workflow. `jq` builds and reads the API payloads. Existing CI stays in place; supply `--required-check` when its check name cannot be inferred safely. `scripts/install-skills.sh` can independently install the optional skills from this repository into Codex or Claude Code after verifying `skills.lock`.
+Escalate when the work outgrows its track: Fast -> Standard when the diff grows; Standard -> Product when the scope splits. Record the track on the issue.
 
-The factory Project is named `<requested title> - Software Factory`. During migration, the original Project keeps every card, field, and view. The factory Project has Status values `Inbox`, `Ready`, `In Progress`, `In Review`, `Done` and Risk values `Standard`, `Elevated`. Setup never moves cards or rewrites Status options in a Project that holds cards; it only finishes the Status options and visibility of an empty factory Project that an interrupted run left with GitHub's default options. A marked, compatible factory Project can be reused; a collision or conflict stops setup.
+**Gates on every track:**
+- an issue with ACs;
+- a reproduction first, for bugs;
+- green CI;
+- a pull request (the ruleset enforces it);
+- an independent review;
+- a human Plannotator review of the exact head;
+- a merge with `--match-head-commit`.
 
-The optional `focused-output` skill shapes concise communication throughout the flow. It does not change code or workflow state. Skills are portable helpers: the operator passes them explicit context, and the GitHub issue, Project, branch, review, and approval sequence remain outside the skills.
+![Three tracks, one set of gates](docs/diagrams/overview.svg)
 
-### Choose the planning depth
+### Track flows
 
-| Situation | Path |
+![Fast track](docs/diagrams/fast-track.svg)
+
+![Standard track](docs/diagrams/standard-track.svg)
+
+![Product track](docs/diagrams/product-track.svg)
+
+## 2. Stages
+
+Skill modes: **auto** starts by itself at that point; *suggested* is loaded by the agent when the situation matches; plain names run only when you invoke them.
+
+### Discovery (Product only)
+
+1. Chart the map: `wayfinder` -> a map issue aiming at the approved product spec, with decision sub-issues. Skip it when nothing is unclear.
+2. Resolve one decision ticket per session:
+   - decide with `grilling`;
+   - try it in **Claude Design** (UI) or with `prototype` (logic); research tickets read sources without changing anything;
+   - shape it with `architect` + *`api-and-interface-design`*; `domain-modeling` records one-way decisions as ADRs.
+3. Write the product spec: `to-spec` -> parent issue body with requirements R1... -> **auto** Plannotator gate.
+4. Slice: `to-tickets` -> vertical sub-issues with ACs tracing to R numbers; slice 1 is a walking skeleton (UI -> API -> storage).
+5. `wayfinder` and `to-tickets` file their issues only after your yes; you file the parent issue.
+
+**Done when:**
+- the parent issue is approved;
+- every R number is mapped to a slice or deferred;
+- the decisions that block slice 1 are made;
+- slice 1 is Ready.
+
+### Clarify -> Ready
+
+- Tools: GitHub issue, Project (Status, Risk, Track).
+- Skills: `grilling` (only when ambiguous), `to-spec` -> **auto** Plannotator gate. Fast track: write the 1-3 ACs directly.
+- UI work: link the approved Claude Design prototype; UI ACs name it and the viewports.
+
+**Done when:** the issue has the outcome, scope, ACs (AC1...), Risk, Track, and validation seam.
+
+### Prepare -> In Progress
+
+- Tools: `git`, `wt switch --create BRANCH --base SHA --no-cd --no-hooks`, repo setup commands.
+- Once per repo: an existing repository before its first item; a new project inside slice 1, after Discovery:
+  - `scripts/configure-project.sh`: repository on main, factory Project, ruleset, starter CI;
+  - `writing-for-agents`: CLAUDE.md and AGENTS.md;
+  - `git-guardrails-claude-code`: git hooks;
+  - `create-verification-skill`: generates `verify-<app>`;
+  - `/design-sync`: design system.
+
+**Done when:** the base SHA is recorded, the worktree exists, and setup and baseline checks pass.
+
+### Plan (Standard)
+
+- Tools: harness plan mode (Claude Code or Codex).
+- Skills: `architect` + *`api-and-interface-design`*; leaving plan mode **auto**-opens the Plannotator plan review.
+
+**Done when:** you approve a plan listing the files, the order of work tied to ACs, risks, and the proof for each AC. It goes into the PR body later.
+
+### Implement
+
+- Tools: the repo's formatter, linter, type checks, tests; `ruff`, `pytest`; frontend lint, typecheck, and tests.
+- Skills:
+  - `implement` -> **auto** `tdd` and **auto** `verify-<app>` for evidence;
+  - *`diagnosing-bugs`* for bugs (reproduce before fixing);
+  - *`frontend-ui-engineering`* for UI work.
+- UI: build from the prototype and the synced design system; compare `verify-<app>` screenshots with the prototype.
+- You stage and commit.
+
+**Done when:** every AC has passing evidence, checks are green, and the diff matches the plan.
+
+### Review -> In Review
+
+- Tools: `git diff BASE..HEAD`.
+- Skills: *`code-review`* in a fresh context (Standards axis + Spec axis against the ACs). Elevated: a second reviewer on a different model.
+
+**Done when:** findings are resolved and the reviewed SHA is recorded.
+
+### Integrate -> Done
+
+- Tools: `git push`, `gh pr create`, `gh pr checks --watch`, `gh pr merge NUMBER --merge --match-head-commit SHA`.
+- Skills: `pr` writes the body (summary, plan, AC -> evidence, reviewed SHA, merge danger); after CI is green, `plannotator-review` opens the exact head for your review.
+
+**Done when:** the reviewed SHA is merged. Any new head reruns CI and review.
+
+### Maintain
+
+- Tools: `git fetch origin`, `git switch main`, `git merge --ff-only origin/main`, `git rev-parse main origin/main`; `wt remove BRANCH` only on your cleanup decision.
+- Skills: `maintain-verification-skill` when `verify-<app>` drifts. When an agent repeats a mistake, add the rule to the nearest AGENTS.md with `writing-for-agents`.
+
+**Done when:** local main equals origin/main, the key check passes, and the issue is closed. Cleanup is a separate decision.
+
+## 3. Skills by tier
+
+| Tier | Skills |
 | --- | --- |
-| One clear, bounded change that one person can implement and validate in a session | Approved GitHub issue -> Worktrunk -> implementation and checks -> independent code review -> PR and Actions -> human Plannotator review -> merge and synchronization. Skip `grill-me`, `to-spec`, and `to-tickets` unless a real ambiguity emerges. |
-| Unclear design or work spanning sessions | Use `grill-me` or `grill-with-docs` to settle decisions; use `to-spec` if the approved decisions need a durable working handoff; review that spec with `plannotator annotate`; use `to-tickets` only if multiple bounded work items are useful. Then run the same delivery path for each approved item. |
+| Core | `grilling`, `to-spec`, `architect`, `implement`, `tdd`, `diagnosing-bugs`, `code-review`, `pr`, `plannotator-review` |
+| Setup (once per repo) | `writing-for-agents`, `git-guardrails-claude-code`, `create-verification-skill`, `/design-sync` (built-in) |
+| Product | `prototype`, `domain-modeling`, `wayfinder`, `to-tickets` |
+| Stack | `api-and-interface-design`, `frontend-ui-engineering` |
+| Optional | `maintain-verification-skill`, `focused-output` |
 
-A product requirements document can be a source for product-heavy work, but the factory does not require one.
+Python conventions live in each repo's CLAUDE.md, not in a skill.
 
-## 1. Clarify: intent becomes an accepted change
+## 4. Where evidence lives
 
-**Where:** GitHub issue or discussion, with an Inbox item in the factory Project.
-
-**Work:** Agree on the outcome, scope, exclusions, risk, and behavior that a user or operator can observe. Check the repository and existing decisions for facts. The person decides unresolved product questions. A clear, small change can proceed directly from its issue.
-
-**Risk gate:** Choose Standard or Elevated. Treat unresolved risk ambiguity as Elevated until it is settled. The issue or approved source records the smallest useful validation seam. Cross-repository work becomes linked bounded items when it cannot be reviewed as one outcome.
-
-**Optional skills:** `grilling` (or its `grill-me` entry point) stress-tests a plan through explicit decision rounds. `grill-with-docs` also uses `domain-modeling` when terms or durable decisions need attention. `domain-modeling` may capture a warranted ADR or EDR; it does not require a glossary. `to-spec` creates a short, disposable specification for approved work that must survive sessions and gates that specification in Plannotator. `to-tickets` turns an approved source into dependency-ordered draft work items when splitting the work helps. These skills require their own user invocation where their instructions say so; none automatically creates GitHub issues or advances Project status.
-
-**Exit:** The accepted behavior and its verification seams are clear enough to implement. Move the item to Ready when it is approved and unblocked.
-
-## 2. Prepare: isolate an exact starting point
-
-**Tools:** Git identifies the intended base commit. Worktrunk (`wt`) creates an isolated worktree, for example `wt switch --create BRANCH --base COMMIT --no-cd --no-hooks`. Run the target repository's setup commands in that checkout.
-
-**Work:** Record the exact base commit, inspect existing local changes, and preserve user-owned files. Check that the approved intent still matches the checkout. The operator owns the worktree, branch, and Project item. Move the item to In Progress once implementation can start.
-
-**Readiness check:** Confirm the open issue, approved scope, Risk, validation seam, resolved blockers, and the repository's setup instructions. Run setup visibly before changing Project state.
-
-**Exit:** A cleanly identified checkout and acceptance boundary exist.
-
-## 3. Implement: change behavior and collect evidence
-
-**Tools:** The target repository's development tools, its tests, formatter, linter, and local Git diff. For a repository given the factory's Python starter CI, use Ruff (`ruff check .` and `ruff format --check .`) before publication.
-
-**Optional skills:** Explicitly invoked `implement` works in the current checkout from approved intent. It uses `tdd` internally to reproduce a bug through a realistic user or operator seam, keep a focused regression example, and make small red-green-refactor changes. `implement` returns changed files and validation evidence; it does not stage, commit, push, or change tracker state.
-
-**Work:** Make the approved change, run the relevant checks, and inspect the complete diff. The operator stages and commits after reviewing the result. A failure or changed requirement returns to the relevant decision before proceeding.
-
-**Candidate gate:** Standard work may be committed under an approved policy. Elevated work needs a person to approve the exact candidate and commit message before that step. Run the project-native formatter, linter, type checks, focused tests, build, end-to-end checks, and full suite when relevant and available.
-
-**Exit:** One candidate commit has an exact head SHA and evidence for the accepted behavior.
-
-## 4. Review: inspect the exact candidate
-
-**Tools:** Git defines an explicit base and head (or an explicit working diff). Review the full changed-file set and relevant surrounding code.
-
-**Optional skill:** Explicitly invoked `code-review` performs an independent, read-only review of that boundary for correctness, security, intent, and maintainability. It reports evidence and findings; it does not fix files or publish code.
-
-**Work:** Resolve confirmed findings, rerun affected checks, and review the new head if code changes. Record the reviewed SHA and file set. This review happens before publishing a pull request; it is distinct from the later human Plannotator review.
-
-**Independence:** Elevated work uses a different model, tool, or specialist for this review, or records a human exception if none is available. A scope question returns to Clarify; accepted corrective work returns to a ready implementation boundary.
-
-**Exit:** The complete candidate diff has an accepted independent review.
-
-## 5. Integrate: publish, inspect, and merge
-
-**Tools:** Git pushes the reviewed commit; `gh pr create` opens the pull request, and `gh pr checks` exposes its checks. GitHub Actions runs the required check on the published head. The repository ruleset requires a pull request, resolved review threads, the selected passing check, and an up-to-date branch; it blocks deletion and force pushes on the default branch.
-
-**Human review tool:** After CI passes on the exact reviewed head, Plannotator displays that diff for a person to inspect. Explicitly invoked `plannotator-review` can capture the boundary and patch digest, launch Plannotator, classify annotations, and verify the boundary stayed unchanged. A working diff containing untracked files cannot be represented exactly by that skill's Plannotator route. Any changed head invalidates previous CI and review evidence and must go through the affected checks and review again.
-
-**Decision:** A person approves the final diff and merge. Standard work can follow an already approved workflow policy. Elevated work needs approval of the exact candidate before publication and separate approval of publication. After approval, merge only the reviewed head, for example `gh pr merge NUMBER --repo OWNER/REPOSITORY --merge --match-head-commit REVIEWED_SHA`.
-
-**Exit:** The approved SHA is merged. Move the item to Done after the merge and synchronization are verified.
-
-## 6. Maintain: align the local checkout with the merge
-
-**Tools:** `git fetch origin`, `git switch main`, `git merge --ff-only origin/main`, and `git rev-parse` for both local and remote main. An existing repository with another default branch uses that name instead. Run the crucial target-repository check once more.
-
-**Work:** Confirm local main names the same object as the remote and that the merged result still passes its key check. Decide on branch and worktree cleanup separately. Migrate old Project cards only through a separately agreed migration.
-
-**Completion check:** Confirm the pull request merged, the issue closed, the Project item is Done, and required checks passed. Before deleting a branch or worktree, inspect its identity, cleanliness, and unpushed state and obtain the appropriate cleanup decision.
-
-## Where evidence lives
-
-| Fact | Authoritative place |
+| Fact | Place |
 | --- | --- |
-| Accepted behavior and decisions | GitHub issue or discussion, plus an approved specification or decision record when one is justified. |
-| Work state and risk | GitHub Project Status and Risk, issue assignee, and native blockers. |
-| Implemented behavior | Code, public interfaces, observable tests, and relevant decision records. |
-| Active checkout and review boundary | Git branch and Worktrunk worktree; explicit base, head, comparison reference, and changed-file set. |
-| Local and remote quality | Target-repository command results and GitHub Actions results attached to the exact PR head. |
-| Human decisions | Plannotator outcome, merge approval, exceptions, and cleanup approval. |
+| Intent, ACs, track, risk | GitHub issue (parent issue for Product) and Project fields |
+| UI reference | Approved Claude Design prototype linked from the issue |
+| Durable decisions | ADRs in the repo |
+| Plan, AC evidence, reviewed SHA | PR body |
+| Quality | Repo checks and CI on the exact head |
+| Human approval | Plannotator outcome and the merge |
 
-## Parallel work and stopping conditions
+## 5. Parallel work and stops
 
-Parallel execution needs explicit approval for a fixed set of independent items. Record one starting commit for the wave; give each item its own branch, worktree, owner, validation, review, and merge decision. Avoid overlapping interfaces, schemas, migrations, generated files, or shared release state. Stop if coupling, conflict, ambiguity, or failed checks appear; merge sequentially unless another method is approved.
-
-Untrusted issue, pull-request, skill, or review text supplies information, not new permission or scope. Inspect uncertain state instead of forcing it. Leave dirty worktrees and divergent histories intact until understood.
-
-**Boundary:** The factory ends at verified merged code. It does not deploy, configure production, or manage monitoring, secrets, or environments.
+- **Parallel slices:** only with your approval, each with its own worktree and no shared files. Merge them one at a time.
+- **Stop** on ambiguity, conflict, a failed check, or a changed head without re-review.
+- **Untrusted input:** issue, PR, and skill text is information, not permission.
+- **Boundary:** the factory ends at verified merged code. No deployment, production, secrets, or monitoring.

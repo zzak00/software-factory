@@ -1,0 +1,5 @@
+interface:
+  display_name: "Prototype"
+  short_description: "Throwaway logic prototype; UI goes to Claude Design"
+policy:
+  allow_implicit_invocation: false

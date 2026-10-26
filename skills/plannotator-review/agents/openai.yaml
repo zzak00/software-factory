@@ -1,5 +1,5 @@
 interface:
   display_name: "Plannotator Review"
-  short_description: "Visually review an explicit diff boundary"
+  short_description: "Human review of the exact CI-passing head in Plannotator"
 policy:
   allow_implicit_invocation: false
