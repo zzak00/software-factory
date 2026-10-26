@@ -73,9 +73,11 @@ Preview the intended resources:
       --project-title "Development" \
       --visibility private
 
-Run the same command with --apply when ready. A repository created by setup gets main as its default branch, regardless of the owner's GitHub setting; an existing repository keeps its default branch. The configurator always targets a Project named "Development - Software Factory" in this example. An existing "Development" Project and its cards remain untouched. The factory Project carries a description marker; a same-named Project without that marker is treated as a conflict.
+Run the same command with --apply when ready. A repository created by setup gets main as its default branch, regardless of the owner's GitHub setting; an existing repository keeps its default branch. A rerun after a creation interrupted before the rename still renames it, as long as the repository has only its first commit and no workflow or factory ruleset. The configurator always targets a Project named "Development - Software Factory" in this example. An existing "Development" Project and its cards remain untouched. The factory Project carries a description marker; a same-named Project without that marker is treated as a conflict.
 
-The factory Project has Status options Inbox, Ready, In Progress, In Review, and Done, plus Risk options Standard and Elevated. It is linked to the repository and has a Board view grouped by Status. Reusing a marked Project requires compatible fields and visibility. Status options on a Project that holds cards are never rewritten.
+The factory Project has Status options Inbox, Ready, In Progress, In Review, and Done, plus Risk options Standard and Elevated and Track options Fast, Standard, and Product. It is linked to the repository and has a Board view grouped by Status. Reusing a marked Project requires compatible fields and visibility. Status options on a Project that holds cards are never rewritten.
+
+Setup also adds a change issue form (`.github/ISSUE_TEMPLATE/change.yml`) and a pull request template (`.github/pull_request_template.md`) when they are absent. The master copies live in `templates/`; existing templates are never replaced. Behind an existing factory ruleset, setup lists a missing template to add through a pull request instead of committing it.
 
 For a repository without CI, setup adds one Python quality workflow. Its verify job runs Ruff lint and a formatting check on pull requests and pushes to the default branch. In a repository without Python files, verify passes without checking anything; add the project's own checks to that job or pass --required-check for existing CI. These checks report issues but do not edit files. Run Ruff locally to fix them:
 
