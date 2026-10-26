@@ -32,10 +32,12 @@ For committed work and pull requests, launch through the harness terminal:
 PLANNOTATOR_AI=disabled \
 PLANNOTATOR_SHARE=disabled \
 PLANNOTATOR_REMOTE=0 \
-plannotator review --git --base <base> --diff-type since-base --json
+plannotator review --git --base <base> --diff-type since-base --gate --json [DIRECTORY]
 ```
 
-For working review, map the boundary to `--diff-type`: `staged` to `staged`, `unstaged` to `unstaged`, and `combined` with no untracked files to `uncommitted`. Plannotator's diff types cover tracked changes only, so a boundary with untracked files has no exact representation: stop rather than approximate it. Add `--no-git-remote-check` only when the user asks for a local-only review.
+`--gate` makes the command wait for the human's sign-off, so the Claude Code plugin's non-blocking mode cannot turn a bare Approve into a skipped decision. When the reviewed checkout is another worktree, pass its directory as the last argument instead of switching into it, and capture and recapture the boundary in that directory.
+
+For working review, use the same command and map the boundary to `--diff-type`: `staged` to `staged`, `unstaged` to `unstaged`, and `combined` with no untracked files to `uncommitted`. Plannotator's diff types cover tracked changes only, so a boundary with untracked files has no exact representation: stop rather than approximate it. Add `--no-git-remote-check` only when the user asks for a local-only review.
 
 Request the narrow approval needed to start the local browser when the harness sandbox blocks it. Wait for completion. Run the command yourself; never ask the user to copy it.
 
@@ -45,7 +47,7 @@ Before submission, the human confirms that the displayed boundary and Files view
 
 After exit, recapture the boundary. The head or working state, the patch digest, and the manifest must match the pre-review record; any mismatch invalidates the result, including an approval.
 
-Read the outcome from the JSON `decision` field (`approved`, `annotated`, or `dismissed`), not from the message text.
+Read the outcome from the JSON `decision` field (`approved`, `annotated`, or `dismissed`), not from the message text. `dismissed`, or a session closed without feedback, is not approval: report it in one sentence and stop.
 
 Check each annotation against the accepted intent and the source. Classify it as `Confirmed`, `Partly`, `Not a bug`, or `Intended`, with brief evidence, and say whether it was introduced, pre-existing, or accepted scope. List scope changes separately, each with the smallest product question needed to make it testable.
 

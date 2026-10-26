@@ -23,7 +23,7 @@ Deployment and production are out of scope.
 - macOS, Git, Bash, jq, and the GitHub CLI, authenticated with repository and Project access
 - The workflow token scope, when setup must create Python CI
 - Worktrunk (`wt`) for isolated worktrees
-- Plannotator for reviewing specs, plans, and diffs
+- Plannotator 0.28.31 or later for reviewing specs, plans, and diffs
 - The Plannotator Claude Code plugin, so leaving plan mode opens the review:
 
       /plugin marketplace add backnotprop/plannotator
