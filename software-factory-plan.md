@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Provide a direct, reviewable path from accepted intent to merged code. Keep the factory usable without bundled agent skills or a mandatory application stack.
+A direct, reviewable path from accepted intent to merged code. It works without the optional skills or a mandatory application stack.
 
 ## Accepted setup decisions
 
@@ -16,16 +16,23 @@ Provide a direct, reviewable path from accepted intent to merged code. Keep the 
 - Read every ruleset page before deciding one is absent. Reject a Project GraphQL result whose repository, field, or view connection has more pages, so a partial lookup cannot trigger a duplicate link or Board.
 - Agent skills are an optional, separately installed artifact kept in this repository. Their installer verifies exact lock coverage and refuses differing destinations. The mental map is Markdown, and this repository does not use npm.
 
-## Delivery sequence
+## Accepted workflow decisions
 
-1. Clarify the outcome, scope, risk, and acceptance criteria.
-2. Prepare an exact-base isolated checkout.
-3. Implement and run the target repository's checks.
-4. Review the complete diff independently.
-5. Publish the reviewed head and wait for CI.
-6. Inspect the CI-passing head in Plannotator, then merge that exact head.
-7. Synchronize local main and verify the result.
+| Decision | Detail |
+| --- | --- |
+| Three tracks | Fast, Standard, Product. Picked at Clarify; work moves up a track when it outgrows its own |
+| Fixed gates | Issue with ACs, reproduction for bugs, green CI on a PR, independent review, Plannotator review of the exact head, `--match-head-commit` merge |
+| Plan stage | Standard work only. Approved in Plannotator and recorded in the PR body, not committed |
+| Product discovery | Parent issue holds the spec; slices are sub-issues with blockers; ADRs for one-way decisions; walking-skeleton first slice |
+| Frontend | Claude Design prototypes are the visual reference. `/design-sync` keeps the design system in step. `verify-<app>` screenshots prove UI ACs |
+| Invocation | Code, decisions, and GitHub changes are invoked only. Review and reference skills may load on their own. Plannotator opens at plan and spec gates |
+| Skill bundle | Pinned upstream revisions with factory patches recorded in skills.lock. Python conventions live in each repo's CLAUDE.md |
 
 ## Verification and remaining boundary
 
 The configurator is exercised against simulated GitHub responses for new and existing Projects, CI selection, incomplete fields, and ruleset conflicts. The optional skill installer is exercised for fresh, existing, and unsafe bundles. Repository CI runs those shell tests and ShellCheck. A live GitHub setup must be verified against the actual repository and Project before depending on the configured protections. Migration of cards from an older Project is a separate decision.
+
+Follow-ups:
+- the configurator adds a Track field, an issue form, and a PR template;
+- a frontend CI job;
+- the pilot is rebuilt on main.

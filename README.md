@@ -1,22 +1,38 @@
 # Software Factory
 
-A lightweight workflow for turning an agreed code change into reviewed, merged code:
+Takes an agreed change from intent to reviewed, merged code. The size of the work picks the track; every track passes the same gates.
 
-Clarify -> Prepare -> Implement -> Review -> Integrate -> Maintain
+| Track | Route |
+| --- | --- |
+| Fast: hotfix, color or copy change | Clarify -> Prepare -> Implement -> Review -> Integrate -> Maintain |
+| Standard: one PR (default) | Clarify -> Prepare -> Plan -> Implement -> Review -> Integrate -> Maintain |
+| Product: more than one PR | Discovery -> each slice runs Standard |
 
-The repository provides a GitHub Project configurator and an operator runbook. It also contains an optional skill bundle for Codex and Claude Code. The workflow works without installing those skills. Deployment and production operations are outside its scope.
+This repository holds:
+- a configurator for the GitHub repository and Project;
+- the operator workflow;
+- an optional skill bundle for Codex and Claude Code.
 
-See the [mental map](software-factory-mental-map.md) for the workflow at a glance and the [current plan](software-factory-plan.md) for the accepted setup decisions.
+Deployment and production are out of scope.
+
+- [Mental map](software-factory-mental-map.md): every track, stage, gate, skill, and tool.
+- [Plan](software-factory-plan.md): accepted decisions.
 
 ## Requirements
 
-- macOS, Git, Bash, jq, and an authenticated GitHub CLI with repository and Project access
-- Permission to write workflows when setup must create Python CI (the workflow scope for a classic token)
-- Worktrunk for isolated worktrees
-- Plannotator for human inspection of the final code diff
-- The target repository's own development tools and checks
+- macOS, Git, Bash, jq, and the GitHub CLI, authenticated with repository and Project access
+- The workflow token scope, when setup must create Python CI
+- Worktrunk (`wt`) for isolated worktrees
+- Plannotator for reviewing specs, plans, and diffs
+- The Plannotator Claude Code plugin, so leaving plan mode opens the review:
 
-Check local capabilities with:
+      /plugin marketplace add backnotprop/plannotator
+      /plugin install plannotator@plannotator
+
+- Claude Design (in Claude) for frontend prototypes
+- The target repository's own tools and checks
+
+Check them:
 
     git --version
     gh auth status
@@ -24,16 +40,28 @@ Check local capabilities with:
     wt --version
     plannotator --version
 
-Private repository rulesets require an eligible GitHub plan. A ruleset failure must be resolved on GitHub before setup can complete.
+Rulesets on private repositories need an eligible GitHub plan.
 
-## Optional harness skills
+## Optional skills
 
-The skills in this repository are a separate artifact for local harnesses. Their source files are recorded in skills.lock. The offline installer verifies the lock and refuses to overwrite a differing installation. Preview, then install if you want to use them:
+Locked file by file in skills.lock. Install for Codex and Claude Code:
 
     ./scripts/install-skills.sh --harness all
     ./scripts/install-skills.sh --harness all --apply
 
-Codex installs to ~/.agents/skills and Claude Code installs to ~/.claude/skills. Use --target-home with an absolute path to select another home directory. The dry run returns 0 when already verified, 2 when installation is needed, and 1 for a conflict or unsafe bundle.
+- When skills run:
+  - skills that write code, settle a decision, or change GitHub state run only when invoked;
+  - review and reference skills may load on their own;
+  - Plannotator opens automatically at plan and spec gates.
+- Install destinations:
+  - Codex: `~/.agents/skills`;
+  - Claude Code: `~/.claude/skills`;
+  - any other home: `--target-home ABSOLUTE_PATH`.
+- Dry-run exit codes:
+  - 0: already verified;
+  - 2: install needed;
+  - 1: conflict or unsafe bundle.
+- The installer never deletes. Remove an old copy of a changed skill before installing.
 
 ## Configure a repository and Project
 
@@ -58,47 +86,20 @@ For a repository with CI, setup reads checks published on its default branch. If
 
 The default command is a dry run. It does not contact GitHub, so the final check name and whether a Project will be reused are resolved during --apply. An interrupted creation before the Project receives its marker requires inspection before another run. After the marker, a rerun finishes the Status options and visibility of an interrupted Project that still has GitHub's default Status options and no cards.
 
-## Development workflow
+## Workflow
 
-### Clarify
+Pick the track at Clarify and record it on the issue. Every track keeps these gates:
 
-Record the outcome, scope, exclusions, risk, and observable acceptance criteria in an issue. Standard work with clear intent can proceed from that issue. For larger or uncertain work, settle decisions in discussion or a short working specification. Any external planning skill is optional.
+1. An issue with acceptance criteria
+2. A reproduction first, for bugs
+3. Green CI on a pull request
+4. An independent review
+5. A human Plannotator review of the exact head
+6. A merge of that head only:
 
-### Prepare
+       gh pr merge NUMBER --repo OWNER/REPOSITORY --merge --match-head-commit REVIEWED_SHA
 
-Confirm the exact base commit, create an isolated worktree, and run that repository's setup commands:
-
-    wt switch --create BRANCH --base COMMIT --no-cd --no-hooks
-
-Move the Project item to In Progress when its checkout and requirements are ready.
-
-### Implement
-
-Change only the approved behavior. Reproduce bugs as close to the user experience as practical, add focused tests where they protect meaningful behavior, and run the target repository's checks. The operator owns staging and commits, regardless of which assistant or tool writes code.
-
-### Review
-
-Run an independent read-only code review against an explicit base and head, or an explicit working diff. Resolve findings against the complete change. Record the reviewed head and file set.
-
-### Integrate
-
-Push the reviewed commit, open the pull request, and wait for the required CI check on that exact head. Then inspect the CI-passing diff in Plannotator. If the head changes, rerun the affected checks and review. Merge only the approved head:
-
-    gh pr merge NUMBER --repo OWNER/REPOSITORY --merge --match-head-commit REVIEWED_SHA
-
-Standard work can proceed under an approved workflow policy. Elevated work needs approval of the exact candidate before publication and approval of publication itself. The final human diff review and merge decision remain separate.
-
-### Maintain
-
-After merge, fast-forward local main, verify it matches the remote object ID, and rerun the crucial target-project check. For an existing repository with another default branch, use that name instead of main:
-
-    git fetch origin
-    git switch main
-    git merge --ff-only origin/main
-    git rev-parse main
-    git rev-parse origin/main
-
-Branch and worktree cleanup are separate decisions. Keep both Projects during migration; move existing cards only through a separately agreed migration.
+The [mental map](software-factory-mental-map.md) gives each stage's steps, skills, and done criteria.
 
 ## Validate this repository
 
