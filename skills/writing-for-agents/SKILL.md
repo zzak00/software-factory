@@ -91,12 +91,14 @@ Apply the rules above to a repository's agent instructions:
   <!-- Points Claude at AGENTS.md via import; edit AGENTS.md, not this file. -->
   @AGENTS.md
   ```
+- **One per context.** In a monorepo, write a root `AGENTS.md` for what every context shares and one per context (`backend/`, `frontend/`) for its own commands, conventions, and terms, each with a sibling `CLAUDE.md` that imports it.
 - **One page**, holding only what an agent cannot find by looking:
   - commands: setup, run (with ports), format, lint, type check, test, and which of them CI runs;
   - conventions: Python version and framework, typing, Ruff and pytest layout, frontend framework and test runner;
   - architecture: what each top-level directory owns and which parts may call which;
   - mistakes agents make here, each with the rule that prevents it;
   - where `verify-<app>` lives, once it exists.
+  - domain terms, in a `## Domain terms` section that `domain-modeling` maintains.
 - **Verified.** Run every command before writing it down.
 - **Self-maintaining.** End `AGENTS.md` with this section, so later agents keep the bar:
 

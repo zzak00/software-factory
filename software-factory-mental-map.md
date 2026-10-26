@@ -21,18 +21,30 @@ Escalate when the work outgrows its track: Fast -> Standard when the diff grows;
 - a human Plannotator review of the exact head;
 - a merge with `--match-head-commit`.
 
+![Three tracks, one set of gates](docs/diagrams/overview.svg)
+
+### Track flows
+
+![Fast track](docs/diagrams/fast-track.svg)
+
+![Standard track](docs/diagrams/standard-track.svg)
+
+![Product track](docs/diagrams/product-track.svg)
+
 ## 2. Stages
 
 Skill modes: **auto** starts by itself at that point; *suggested* is loaded by the agent when the situation matches; plain names run only when you invoke them.
 
 ### Discovery (Product only)
 
-1. Shape the idea: `grilling` -> users, core jobs, exclusions, riskiest assumptions.
-2. Prototype the UI in **Claude Design**; prototype non-UI logic with `prototype` (throwaway).
-3. Fix the architecture: `architect` + *`api-and-interface-design`*; record each one-way decision as an ADR with `domain-modeling`.
-4. Write the product spec: `to-spec` -> parent issue body with requirements R1... -> **auto** Plannotator gate.
-5. Map open decisions: `wayfinder`. Slice: `to-tickets` -> vertical slices with ACs tracing to R numbers; slice 1 is a walking skeleton (UI -> API -> storage).
-6. You file the parent issue and sub-issues with `gh`.
+1. Chart the map: `wayfinder` -> a map issue aiming at the approved product spec, with decision sub-issues. Skip it when nothing is unclear.
+2. Resolve one decision ticket per session:
+   - decide with `grilling`;
+   - try it in **Claude Design** (UI) or with `prototype` (logic); research tickets read sources without changing anything;
+   - shape it with `architect` + *`api-and-interface-design`*; `domain-modeling` records one-way decisions as ADRs.
+3. Write the product spec: `to-spec` -> parent issue body with requirements R1... -> **auto** Plannotator gate.
+4. Slice: `to-tickets` -> vertical sub-issues with ACs tracing to R numbers; slice 1 is a walking skeleton (UI -> API -> storage).
+5. `wayfinder` and `to-tickets` file their issues only after your yes; you file the parent issue.
 
 **Done when:**
 - the parent issue is approved;

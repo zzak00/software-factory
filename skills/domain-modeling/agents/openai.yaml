@@ -1,3 +1,5 @@
 interface:
   display_name: "Domain Modeling"
-  short_description: "Build and sharpen a domain model"
+  short_description: "Sharpen domain terms and record ADRs"
+policy:
+  allow_implicit_invocation: false

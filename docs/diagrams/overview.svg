@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="960" height="640" viewBox="0 0 960 640" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="factory-overview-title factory-overview-desc"><title id="factory-overview-title">Three tracks, one set of gates</title><desc id="factory-overview-desc">Overview: an issue is clarified into the Fast, Standard, or Product track; every track passes the same gates before an exact-head merge.</desc><defs><marker id="arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#4f5d75"/></marker><marker id="arrow-accent" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#bf4520"/></marker><marker id="arrow-link" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#2e5aa8"/></marker></defs><rect width="100%" height="100%" fill="#f5f5f5"/><line x1="480" y1="92" x2="480" y2="122" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#arrow)"/>
+<path d="M420,184 L420,206 Q420,214 412,214 L198,214 Q190,214 190,222 L190,242" fill="none" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#arrow)"/>
+<line x1="480" y1="184" x2="480" y2="242" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#arrow)"/>
+<path d="M540,184 L540,206 Q540,214 548,214 L762,214 Q770,214 770,222 L770,242" fill="none" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#arrow)"/>
+<line x1="190" y1="312" x2="190" y2="382" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#arrow)"/>
+<line x1="480" y1="312" x2="480" y2="382" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#arrow)"/>
+<line x1="660" y1="278" x2="592" y2="278" stroke="#4f5d75" stroke-width="1.2" stroke-dasharray="5,4" marker-end="url(#arrow)"/>
+<rect x="595.0" y="257" width="62" height="12" rx="2" fill="#f5f5f5"/><text x="626" y="266" fill="#5a6580" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.06em">EACH SLICE</text>
+<line x1="480" y1="452" x2="480" y2="482" stroke="#bf4520" stroke-width="1.2" marker-end="url(#arrow-accent)"/>
+<rect x="360" y="40" width="240" height="52" rx="6" fill="#f5f5f5"/>
+<rect x="360" y="40" width="240" height="52" rx="6" fill="#f5f5f5" stroke="#2d3142" stroke-width="1"/>
+<rect x="368" y="48" width="41" height="12" rx="2" fill="transparent" stroke="#2d3142" stroke-opacity="0.45" stroke-width="0.8"/>
+<text x="388.5" y="57" fill="#2d3142" fill-opacity="0.85" font-size="7" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.08em">GITHUB</text>
+<text x="480.0" y="70.0" fill="#2d3142" font-size="12" font-weight="600" font-family="Geist, system-ui, sans-serif" text-anchor="middle">Issue</text>
+<text x="480.0" y="85.0" fill="#4f5d75" font-size="9" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle">Project Status: Inbox</text>
+<rect x="360" y="124" width="240" height="60" rx="6" fill="#f5f5f5"/>
+<rect x="360" y="124" width="240" height="60" rx="6" fill="#f5f5f5" stroke="#2d3142" stroke-width="1"/>
+<rect x="368" y="132" width="26" height="12" rx="2" fill="transparent" stroke="#2d3142" stroke-opacity="0.45" stroke-width="0.8"/>
+<text x="381.0" y="141" fill="#2d3142" fill-opacity="0.85" font-size="7" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.08em">YOU</text>
+<text x="480.0" y="158.0" fill="#2d3142" font-size="12" font-weight="600" font-family="Geist, system-ui, sans-serif" text-anchor="middle">Clarify: pick the track</text>
+<text x="480.0" y="173.0" fill="#4f5d75" font-size="9" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle">Track + Risk on the issue</text>
+<rect x="80" y="244" width="220" height="68" rx="6" fill="#f5f5f5"/>
+<rect x="80" y="244" width="220" height="68" rx="6" fill="#f5f5f5" stroke="#2d3142" stroke-width="1"/>
+<rect x="88" y="252" width="31" height="12" rx="2" fill="transparent" stroke="#2d3142" stroke-opacity="0.45" stroke-width="0.8"/>
+<text x="103.5" y="261" fill="#2d3142" fill-opacity="0.85" font-size="7" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.08em">FAST</text>
+<text x="190.0" y="282.0" fill="#2d3142" font-size="12" font-weight="600" font-family="Geist, system-ui, sans-serif" text-anchor="middle">Fast</text>
+<text x="190.0" y="297.0" fill="#4f5d75" font-size="9" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle">hotfix, color, copy</text>
+<rect x="370" y="244" width="220" height="68" rx="6" fill="#f5f5f5"/>
+<rect x="370" y="244" width="220" height="68" rx="6" fill="#f5f5f5" stroke="#2d3142" stroke-width="1"/>
+<rect x="378" y="252" width="50" height="12" rx="2" fill="transparent" stroke="#2d3142" stroke-opacity="0.45" stroke-width="0.8"/>
+<text x="403.0" y="261" fill="#2d3142" fill-opacity="0.85" font-size="7" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.08em">STANDARD</text>
+<text x="480.0" y="282.0" fill="#2d3142" font-size="12" font-weight="600" font-family="Geist, system-ui, sans-serif" text-anchor="middle">Standard</text>
+<text x="480.0" y="297.0" fill="#4f5d75" font-size="9" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle">one PR, plan first</text>
+<rect x="660" y="244" width="220" height="68" rx="6" fill="#f5f5f5"/>
+<rect x="660" y="244" width="220" height="68" rx="6" fill="#f5f5f5" stroke="#2d3142" stroke-width="1"/>
+<rect x="668" y="252" width="46" height="12" rx="2" fill="transparent" stroke="#2d3142" stroke-opacity="0.45" stroke-width="0.8"/>
+<text x="691.0" y="261" fill="#2d3142" fill-opacity="0.85" font-size="7" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.08em">PRODUCT</text>
+<text x="770.0" y="282.0" fill="#2d3142" font-size="12" font-weight="600" font-family="Geist, system-ui, sans-serif" text-anchor="middle">Product</text>
+<text x="770.0" y="297.0" fill="#4f5d75" font-size="9" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle">many PRs, Discovery</text>
+<rect x="120" y="384" width="720" height="68" rx="6" fill="#f5f5f5"/>
+<rect x="120" y="384" width="720" height="68" rx="6" fill="rgba(191,69,32,0.08)" stroke="#bf4520" stroke-width="1.2"/>
+<rect x="128" y="392" width="36" height="12" rx="2" fill="transparent" stroke="#bf4520" stroke-opacity="0.45" stroke-width="0.8"/>
+<text x="146.0" y="401" fill="#bf4520" fill-opacity="0.85" font-size="7" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.08em">GATES</text>
+<text x="480.0" y="422.0" fill="#2d3142" font-size="12" font-weight="600" font-family="Geist, system-ui, sans-serif" text-anchor="middle">Same gates on every track</text>
+<text x="480.0" y="437.0" fill="#4f5d75" font-size="9" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle">ACs · repro for bugs · green CI · independent review · Plannotator on exact head</text>
+<rect x="360" y="484" width="240" height="56" rx="6" fill="#f5f5f5"/>
+<rect x="360" y="484" width="240" height="56" rx="6" fill="#f5f5f5" stroke="#2d3142" stroke-width="1"/>
+<rect x="368" y="492" width="31" height="12" rx="2" fill="transparent" stroke="#2d3142" stroke-opacity="0.45" stroke-width="0.8"/>
+<text x="383.5" y="501" fill="#2d3142" fill-opacity="0.85" font-size="7" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.08em">DONE</text>
+<text x="480.0" y="516.0" fill="#2d3142" font-size="12" font-weight="600" font-family="Geist, system-ui, sans-serif" text-anchor="middle">Merged and synchronized</text>
+<text x="480.0" y="531.0" fill="#4f5d75" font-size="9" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle">merge --match-head-commit</text>
+<line x1="30" y1="582" x2="930" y2="582" stroke="rgba(45,49,66,0.10)" stroke-width="0.8"/>
+<text x="30" y="600" fill="#4f5d75" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" letter-spacing="0.14em">LEGEND</text>
+<rect x="110" y="591" width="16" height="12" rx="3" fill="rgba(191,69,32,0.08)" stroke="#bf4520" stroke-width="1.2"/>
+<text x="134" y="600" fill="#4f5d75" font-size="9" font-family="'Geist Mono', ui-monospace, monospace">gates no track skips</text>
+<line x1="280.0" y1="597" x2="296.0" y2="597" stroke="#4f5d75" stroke-dasharray="4,3" stroke-width="1.2"/>
+<text x="304.0" y="600" fill="#4f5d75" font-size="9" font-family="'Geist Mono', ui-monospace, monospace">Product slices run the Standard route</text></svg>

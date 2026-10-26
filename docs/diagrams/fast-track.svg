@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="960" height="762" viewBox="0 0 960 762" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="factory-fast-title factory-fast-desc"><title id="factory-fast-title">Fast track: hotfix, color, or copy change</title><desc id="factory-fast-desc">Fast track from a small issue to an exact-head merge, skipping spec and plan but keeping every gate.</desc><defs><marker id="arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#4f5d75"/></marker><marker id="arrow-accent" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#bf4520"/></marker><marker id="arrow-link" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#2e5aa8"/></marker></defs><rect width="100%" height="100%" fill="#f5f5f5"/><line x1="480.0" y1="88" x2="480.0" y2="112" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#arrow)"/>
+<line x1="480.0" y1="172" x2="480.0" y2="196" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#arrow)"/>
+<line x1="480.0" y1="256" x2="480.0" y2="280" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#arrow)"/>
+<line x1="480.0" y1="340" x2="480.0" y2="364" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#arrow)"/>
+<line x1="480.0" y1="424" x2="480.0" y2="448" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#arrow)"/>
+<line x1="480.0" y1="508" x2="480.0" y2="532" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#arrow)"/>
+<line x1="480.0" y1="592" x2="480.0" y2="616" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#arrow)"/>
+<text x="154" y="52" fill="#5a6580" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="end" letter-spacing="0.14em">01</text>
+<rect x="170" y="30" width="620" height="58" rx="6" fill="#f5f5f5"/>
+<rect x="170" y="30" width="620" height="58" rx="6" fill="#f5f5f5" stroke="#2d3142" stroke-width="1"/>
+<rect x="178" y="38" width="26" height="12" rx="2" fill="transparent" stroke="#2d3142" stroke-opacity="0.45" stroke-width="0.8"/>
+<text x="191.0" y="47" fill="#2d3142" fill-opacity="0.85" font-size="7" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.08em">YOU</text>
+<text x="214" y="48" fill="#2d3142" font-size="12" font-weight="600" font-family="Geist, system-ui, sans-serif">Clarify</text>
+<text x="182" y="66" fill="#4f5d75" font-size="9" font-family="'Geist Mono', ui-monospace, monospace">Issue with 1-3 ACs · Track: Fast · Risk: Standard · no spec, no plan</text>
+<text x="154" y="136" fill="#5a6580" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="end" letter-spacing="0.14em">02</text>
+<rect x="170" y="114" width="620" height="58" rx="6" fill="#f5f5f5"/>
+<rect x="170" y="114" width="620" height="58" rx="6" fill="#f5f5f5" stroke="#2d3142" stroke-width="1"/>
+<rect x="178" y="122" width="26" height="12" rx="2" fill="transparent" stroke="#2d3142" stroke-opacity="0.45" stroke-width="0.8"/>
+<text x="191.0" y="131" fill="#2d3142" fill-opacity="0.85" font-size="7" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.08em">YOU</text>
+<text x="214" y="132" fill="#2d3142" font-size="12" font-weight="600" font-family="Geist, system-ui, sans-serif">Prepare</text>
+<text x="182" y="150" fill="#4f5d75" font-size="9" font-family="'Geist Mono', ui-monospace, monospace">wt switch --create BRANCH --base SHA --no-cd --no-hooks · baseline checks</text>
+<text x="154" y="220" fill="#5a6580" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="end" letter-spacing="0.14em">03</text>
+<rect x="170" y="198" width="620" height="58" rx="6" fill="#f5f5f5"/>
+<rect x="170" y="198" width="620" height="58" rx="6" fill="#f5f5f5" stroke="#2d3142" stroke-width="1"/>
+<rect x="178" y="206" width="36" height="12" rx="2" fill="transparent" stroke="#2d3142" stroke-opacity="0.45" stroke-width="0.8"/>
+<text x="196.0" y="215" fill="#2d3142" fill-opacity="0.85" font-size="7" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.08em">AGENT</text>
+<text x="224" y="216" fill="#2d3142" font-size="12" font-weight="600" font-family="Geist, system-ui, sans-serif">Implement: implement</text>
+<text x="182" y="234" fill="#4f5d75" font-size="9" font-family="'Geist Mono', ui-monospace, monospace">bug: diagnosing-bugs reproduces first · tdd (auto) · verify-&lt;app&gt; screenshot (UI)</text>
+<text x="154" y="304" fill="#5a6580" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="end" letter-spacing="0.14em">04</text>
+<rect x="170" y="282" width="620" height="58" rx="6" fill="#f5f5f5"/>
+<rect x="170" y="282" width="620" height="58" rx="6" fill="#f5f5f5" stroke="#2d3142" stroke-width="1"/>
+<rect x="178" y="290" width="60" height="12" rx="2" fill="transparent" stroke="#2d3142" stroke-opacity="0.45" stroke-width="0.8"/>
+<text x="208.0" y="299" fill="#2d3142" fill-opacity="0.85" font-size="7" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.08em">SUB-AGENTS</text>
+<text x="248" y="300" fill="#2d3142" font-size="12" font-weight="600" font-family="Geist, system-ui, sans-serif">Review: code-review</text>
+<text x="182" y="318" fill="#4f5d75" font-size="9" font-family="'Geist Mono', ui-monospace, monospace">2 fresh-context sub-agents: Standards axis + Spec axis (ACs) · reviewed SHA</text>
+<text x="154" y="388" fill="#5a6580" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="end" letter-spacing="0.14em">05</text>
+<rect x="170" y="366" width="620" height="58" rx="6" fill="#f5f5f5"/>
+<rect x="170" y="366" width="620" height="58" rx="6" fill="#f5f5f5" stroke="#2d3142" stroke-width="1"/>
+<rect x="178" y="374" width="65" height="12" rx="2" fill="transparent" stroke="#2d3142" stroke-opacity="0.45" stroke-width="0.8"/>
+<text x="210.5" y="383" fill="#2d3142" fill-opacity="0.85" font-size="7" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.08em">AGENT + YOU</text>
+<text x="253" y="384" fill="#2d3142" font-size="12" font-weight="600" font-family="Geist, system-ui, sans-serif">Publish: pr</text>
+<text x="182" y="402" fill="#4f5d75" font-size="9" font-family="'Geist Mono', ui-monospace, monospace">pr writes the body · you push and run gh pr create</text>
+<text x="154" y="472" fill="#5a6580" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="end" letter-spacing="0.14em">06</text>
+<rect x="170" y="450" width="620" height="58" rx="6" fill="#f5f5f5"/>
+<rect x="170" y="450" width="620" height="58" rx="6" fill="#f5f5f5" stroke="#2d3142" stroke-width="1"/>
+<rect x="178" y="458" width="41" height="12" rx="2" fill="transparent" stroke="#2d3142" stroke-opacity="0.45" stroke-width="0.8"/>
+<text x="198.5" y="467" fill="#2d3142" fill-opacity="0.85" font-size="7" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.08em">GITHUB</text>
+<text x="229" y="468" fill="#2d3142" font-size="12" font-weight="600" font-family="Geist, system-ui, sans-serif">CI</text>
+<text x="182" y="486" fill="#4f5d75" font-size="9" font-family="'Geist Mono', ui-monospace, monospace">required check runs on the exact PR head</text>
+<text x="154" y="556" fill="#5a6580" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="end" letter-spacing="0.14em">07</text>
+<rect x="170" y="534" width="620" height="58" rx="6" fill="#f5f5f5"/>
+<rect x="170" y="534" width="620" height="58" rx="6" fill="rgba(191,69,32,0.08)" stroke="#bf4520" stroke-width="1.2"/>
+<rect x="178" y="542" width="26" height="12" rx="2" fill="transparent" stroke="#bf4520" stroke-opacity="0.45" stroke-width="0.8"/>
+<text x="191.0" y="551" fill="#bf4520" fill-opacity="0.85" font-size="7" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.08em">YOU</text>
+<text x="214" y="552" fill="#2d3142" font-size="12" font-weight="600" font-family="Geist, system-ui, sans-serif">Human review: plannotator-review</text>
+<text x="182" y="570" fill="#4f5d75" font-size="9" font-family="'Geist Mono', ui-monospace, monospace">gate: local head = PR head, checks green · digest unchanged</text>
+<text x="154" y="640" fill="#5a6580" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="end" letter-spacing="0.14em">08</text>
+<rect x="170" y="618" width="620" height="58" rx="6" fill="#f5f5f5"/>
+<rect x="170" y="618" width="620" height="58" rx="6" fill="#f5f5f5" stroke="#2d3142" stroke-width="1"/>
+<rect x="178" y="626" width="26" height="12" rx="2" fill="transparent" stroke="#2d3142" stroke-opacity="0.45" stroke-width="0.8"/>
+<text x="191.0" y="635" fill="#2d3142" fill-opacity="0.85" font-size="7" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.08em">YOU</text>
+<text x="214" y="636" fill="#2d3142" font-size="12" font-weight="600" font-family="Geist, system-ui, sans-serif">Merge and maintain</text>
+<text x="182" y="654" fill="#4f5d75" font-size="9" font-family="'Geist Mono', ui-monospace, monospace">gh pr merge --match-head-commit SHA · ff main · wt remove on your call</text>
+<text x="808" y="220" fill="#bf4520" font-size="14" font-style="italic" font-family="'Instrument Serif', serif">Diff grows or touches</text><text x="808" y="238" fill="#bf4520" font-size="14" font-style="italic" font-family="'Instrument Serif', serif">an interface? Move</text><text x="808" y="256" fill="#bf4520" font-size="14" font-style="italic" font-family="'Instrument Serif', serif">to Standard.</text>
+<line x1="30" y1="712" x2="930" y2="712" stroke="rgba(45,49,66,0.10)" stroke-width="0.8"/>
+<text x="30" y="730" fill="#4f5d75" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" letter-spacing="0.14em">LEGEND</text>
+<rect x="110" y="721" width="16" height="12" rx="3" fill="rgba(191,69,32,0.08)" stroke="#bf4520" stroke-width="1.2"/>
+<text x="134" y="730" fill="#4f5d75" font-size="9" font-family="'Geist Mono', ui-monospace, monospace">human approval</text>
+<rect x="246.39999999999998" y="721" width="16" height="12" rx="3" fill="#f5f5f5" stroke="#2d3142"/>
+<text x="270.4" y="730" fill="#4f5d75" font-size="9" font-family="'Geist Mono', ui-monospace, monospace">step</text>
+<rect x="326.79999999999995" y="721" width="16" height="12" rx="3" fill="#f5f5f5" stroke="#2d3142" stroke-dasharray="3,2"/>
+<text x="350.79999999999995" y="730" fill="#4f5d75" font-size="9" font-family="'Geist Mono', ui-monospace, monospace">conditional</text></svg>
