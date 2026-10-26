@@ -61,6 +61,9 @@ case "$1 $2" in
         exit 1
       fi
       grep -q 'POST repos/test/project/branches/master/rename' "$GH_TEST_LOG" || branch=master
+      # GH_TEST_RENAME_LAG makes the first read after the rename still report
+      # master, as GitHub did in a live run.
+      if [ "${GH_TEST_RENAME_LAG:-0}" = 1 ] && [ "$(awk '/branches\/master\/rename/ { seen = 1; next } seen && /^repo view/ { n++ } END { print n + 0 }' "$GH_TEST_LOG")" -le 1 ] && grep -q 'branches/master/rename' "$GH_TEST_LOG"; then branch=master; fi
     fi
     jq -n --arg visibility "${GH_TEST_REPO_VISIBILITY:-PRIVATE}" --arg branch "$branch" '{visibility:$visibility,defaultBranchRef:{name:$branch}}'
     ;;
@@ -265,6 +268,10 @@ jq -e '.branch == "main"' "$CI_BODY" >/dev/null || fail "new repository CI was n
 GH_TEST_MODE=new-repo GH_TEST_REPO_EXISTS=1 run_configure --apply >/dev/null || fail "interrupted new repository was not recovered"
 if grep -q 'repo create' "$LOG"; then fail "recovery created the repository again"; fi
 grep -q 'POST repos/test/project/branches/master/rename -f new_name=main' "$LOG" || fail "interrupted new repository branch was not renamed to main"
+
+: > "$LOG"
+# GitHub applies a rename asynchronously; a stale first read must be retried.
+GH_TEST_MODE=new-repo GH_TEST_RENAME_LAG=1 CONFIGURE_POLL_SECONDS=0 run_configure --apply >/dev/null || fail "a lagging branch rename was not awaited"
 
 : > "$LOG"
 # A new repository also receives the change issue form and PR template from

@@ -152,8 +152,14 @@ if [ "$default_branch" != main ]; then
   fi
   if [ "$repo_unused" -eq 1 ]; then
     gh api -H "X-GitHub-Api-Version: $API_VERSION" --method POST "repos/$OWNER/$REPOSITORY/branches/$default_branch/rename" -f new_name=main >/dev/null || fail "cannot rename default branch to main"
-    repository_state=$(gh repo view "$OWNER/$REPOSITORY" --json visibility,defaultBranchRef) || fail "cannot inspect renamed repository"
-    default_branch=$(printf '%s' "$repository_state" | jq -r '.defaultBranchRef.name // empty') || fail "invalid repository response"
+    # GitHub applies the rename asynchronously, so a read right after it can
+    # still report the old name. Read back up to ten times before failing.
+    for _ in 1 2 3 4 5 6 7 8 9 10; do
+      repository_state=$(gh repo view "$OWNER/$REPOSITORY" --json visibility,defaultBranchRef) || fail "cannot inspect renamed repository"
+      default_branch=$(printf '%s' "$repository_state" | jq -r '.defaultBranchRef.name // empty') || fail "invalid repository response"
+      [ "$default_branch" = main ] && break
+      sleep "${CONFIGURE_POLL_SECONDS:-2}"
+    done
     [ "$default_branch" = main ] || fail "default branch was not renamed to main"
   fi
 fi
