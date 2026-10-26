@@ -20,7 +20,7 @@ If the user passes an issue reference, read it with `gh issue view` and state it
 - **Unexpected failure** (not the expected red of a `tdd` step) whose cause isn't obvious: stop and load `diagnosing-bugs`.
 - Load `tdd` and work at the agreed seams, one vertical slice at a time.
 - Follow the approved sketch. A needed deviation goes back to the plan for approval, not silently into the code.
-- Load the stack skills the files need: `frontend-ui-engineering`, `typescript-best-practices`, `security-and-hardening`, `performance-optimization`.
+- **UI work:** load `frontend-ui-engineering`.
 - Run type checks and single test files regularly, and the full suite once at the end.
 - **UI:** capture `verify-<app>` screenshots at the AC viewports and compare them with the Claude Design prototype. If the repository has no `verify-<app>` yet, say so and use the closest available evidence.
 

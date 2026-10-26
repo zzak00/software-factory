@@ -85,8 +85,8 @@ Skill modes: **auto** starts by itself at that point; *suggested* is loaded by t
 - Skills:
   - `implement` -> **auto** `tdd` and **auto** `verify-<app>` for evidence;
   - *`diagnosing-bugs`* for bugs (reproduce before fixing);
-  - *`frontend-ui-engineering`*, *`typescript-best-practices`*, *`security-and-hardening`*, *`performance-optimization`* as files require.
-- UI: build from the prototype and the synced design system; compare `verify-<app>` screenshots with the prototype; debug with *`browser-testing-with-devtools`*.
+  - *`frontend-ui-engineering`* for UI work.
+- UI: build from the prototype and the synced design system; compare `verify-<app>` screenshots with the prototype.
 - You stage and commit.
 
 **Done when:** every AC has passing evidence, checks are green, and the diff matches the plan.
@@ -119,7 +119,7 @@ Skill modes: **auto** starts by itself at that point; *suggested* is loaded by t
 | Core | `grilling`, `to-spec`, `architect`, `implement`, `tdd`, `diagnosing-bugs`, `code-review`, `pr`, `plannotator-review` |
 | Setup (once per repo) | `writing-for-agents`, `git-guardrails-claude-code`, `create-verification-skill`, `/design-sync` (built-in) |
 | Product | `prototype`, `domain-modeling`, `wayfinder`, `to-tickets` |
-| Stack | `api-and-interface-design`, `security-and-hardening`, `frontend-ui-engineering`, `browser-testing-with-devtools`, `typescript-best-practices`, `performance-optimization` |
+| Stack | `api-and-interface-design`, `frontend-ui-engineering` |
 | Optional | `blast-radius`, `correct`, `maintain-verification-skill`, `focused-output` |
 
 Python conventions live in each repo's CLAUDE.md, not in a skill.
