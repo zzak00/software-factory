@@ -61,6 +61,11 @@ done
 case "$VISIBILITY" in private|public) ;; *) fail "--visibility must be private or public" ;; esac
 case "$OWNER/$REPOSITORY" in *[!A-Za-z0-9_./-]*) fail "owner and repository contain unsupported characters" ;; esac
 FACTORY_PROJECT_TITLE="$PROJECT_TITLE - Software Factory"
+# Template sources live in this checkout so they are reviewed like code.
+TEMPLATE_DIR=$(CDPATH='' cd -- "$(dirname -- "$0")/../templates" && pwd) || fail "cannot locate the templates folder"
+[ -f "$TEMPLATE_DIR/change.yml" ] && [ -f "$TEMPLATE_DIR/pull_request_template.md" ] || fail "templates/change.yml or templates/pull_request_template.md is missing"
+ISSUE_FORM_PATH=".github/ISSUE_TEMPLATE/change.yml"
+PR_TEMPLATE_PATH=".github/pull_request_template.md"
 
 # Print the same high-level plan in dry-run and apply mode. The suffix always
 # reserves a separate Project, even if a Project with the base title exists.
@@ -69,8 +74,10 @@ printf '%s\n' \
   "Project: $OWNER / $FACTORY_PROJECT_TITLE" \
   "Status: Inbox, Ready, In Progress, In Review, Done" \
   "Risk: Standard, Elevated" \
+  "Track: Fast, Standard, Product" \
   "View: Board grouped by Status" \
   "CI: preserve existing workflows or add a Python quality workflow" \
+  "Templates: change issue form and PR template, when absent" \
   "Ruleset: pull requests, no deletion, no force pushes, one required CI check" \
   "Excluded: deployments, environments, secrets, production, monitoring"
 
@@ -137,6 +144,20 @@ if [ "$ruleset_count" -eq 1 ]; then
   existing_ruleset_id=$(printf '%s' "$rulesets" | jq -r '.[] | select(.name == "software-factory-development") | .id')
   existing_ruleset=$(gh api -H "X-GitHub-Api-Version: $API_VERSION" "repos/$OWNER/$REPOSITORY/rulesets/$existing_ruleset_id") || fail "cannot inspect factory ruleset"
 fi
+
+# Read which templates exist before any write. Existing templates are never
+# replaced. Only a 404 means the issue form is absent; GitHub's own template
+# list decides for the PR template, which may live in several places.
+if gh api -H "X-GitHub-Api-Version: $API_VERSION" "repos/$OWNER/$REPOSITORY/contents/$ISSUE_FORM_PATH" >/dev/null 2>"$TMP_ERR"; then
+  issue_form_present=1
+else
+  grep -q 'HTTP 404' "$TMP_ERR" || fail "cannot inspect the issue form: $(cat "$TMP_ERR")"
+  issue_form_present=0
+fi
+# GraphQL variables are intentionally literal here.
+# shellcheck disable=SC2016
+pr_templates=$(gh api graphql -f query='query($owner: String!, $name: String!) { repository(owner: $owner, name: $name) { pullRequestTemplates { filename } } }' -F owner="$OWNER" -F name="$REPOSITORY") || fail "cannot inspect pull request templates"
+pr_template_present=$(printf '%s' "$pr_templates" | jq -e '.data.repository.pullRequestTemplates | if length > 0 then 1 else 0 end') || fail "invalid pull request template response"
 
 # A newly created workflow publishes a job named verify. For existing CI,
 # infer a name only when the default branch exposes exactly one unique check.
@@ -257,6 +278,14 @@ if [ "$risk_count" -eq 1 ]; then
   [ "$risk_options" = "Standard,Elevated" ] || fail "existing Risk options conflict"
 fi
 
+track_count=$(printf '%s' "$fields" | jq '[.fields[] | select(.name == "Track")] | length')
+# Track follows the same rule as Risk: create it when missing, stop on conflict.
+[ "$track_count" -le 1 ] || fail "Project has multiple Track fields"
+if [ "$track_count" -eq 1 ]; then
+  track_options=$(printf '%s' "$fields" | jq -r '.fields[] | select(.name == "Track") | [.options[].name] | join(",")')
+  [ "$track_options" = "Fast,Standard,Product" ] || fail "existing Track options conflict"
+fi
+
 # Set visibility only on an unused Project, which GitHub created as private.
 # For a configured Project, verify it already matches and stop on a mismatch
 # rather than silently overwriting project-owned visibility.
@@ -294,6 +323,9 @@ printf '%s' "$project_state" | project_state_complete || fail "Project link, fie
 # a partial field change.
 if [ "$risk_count" -eq 0 ]; then
   gh project field-create "$project_number" --owner "$OWNER" --name Risk --data-type SINGLE_SELECT --single-select-options Standard,Elevated >/dev/null || fail "cannot create Risk"
+fi
+if [ "$track_count" -eq 0 ]; then
+  gh project field-create "$project_number" --owner "$OWNER" --name Track --data-type SINGLE_SELECT --single-select-options Fast,Standard,Product >/dev/null || fail "cannot create Track"
 fi
 linked=$(printf '%s' "$project_state" | jq --arg repo "$OWNER/$REPOSITORY" '[.data.node.repositories.nodes[] | select(.nameWithOwner == $repo)] | length')
 # Linking is idempotent: create the link only when it is absent, then read back
@@ -360,6 +392,23 @@ EOF
   printf '%s' "$workflow_payload" | gh api -H "X-GitHub-Api-Version: $API_VERSION" --method PUT "repos/$OWNER/$REPOSITORY/contents/.github/workflows/ci.yml" --input - >/dev/null || fail "cannot add CI starter"
 fi
 
+# Commit each absent template straight to the default branch, which works
+# only before the factory ruleset requires pull requests. Behind an existing
+# ruleset, report the file instead so it can arrive through a pull request.
+TEMPLATES_ADDED=0
+add_template() {
+  if [ "$ruleset_count" -eq 1 ]; then
+    printf 'missing %s: add it through a pull request\n' "$1"
+    return
+  fi
+  template_content=$(base64 < "$2" | tr -d '\n') || fail "cannot encode $1"
+  template_payload=$(jq -n --arg message "$3" --arg content "$template_content" --arg branch "$default_branch" '{message:$message,content:$content,branch:$branch}') || fail "cannot build $1"
+  printf '%s' "$template_payload" | gh api -H "X-GitHub-Api-Version: $API_VERSION" --method PUT "repos/$OWNER/$REPOSITORY/contents/$1" --input - >/dev/null || fail "cannot add $1"
+  TEMPLATES_ADDED=$((TEMPLATES_ADDED + 1))
+}
+[ "$issue_form_present" -eq 1 ] || add_template "$ISSUE_FORM_PATH" "$TEMPLATE_DIR/change.yml" "Add the change issue form"
+[ "$pr_template_present" -eq 1 ] || add_template "$PR_TEMPLATE_PATH" "$TEMPLATE_DIR/pull_request_template.md" "Add the pull request template"
+
 if [ "$ruleset_count" -eq 0 ]; then
   # Create protection only when no factory ruleset exists. Existing protection
   # was validated above and is deliberately left untouched.
@@ -384,7 +433,9 @@ fields=$(gh project field-list "$project_number" --owner "$OWNER" --limit "$PROJ
 final_status=$(printf '%s' "$fields" | jq -r '.fields[] | select(.name == "Status") | [.options[].name] | join(",")')
 final_risk=$(printf '%s' "$fields" | jq -r '.fields[] | select(.name == "Risk") | [.options[].name] | join(",")')
 [ "$final_status" = "Inbox,Ready,In Progress,In Review,Done" ] || fail "Status verification failed"
+final_track=$(printf '%s' "$fields" | jq -r '.fields[] | select(.name == "Track") | [.options[].name] | join(",")')
 [ "$final_risk" = "Standard,Elevated" ] || fail "Risk verification failed"
+[ "$final_track" = "Fast,Standard,Product" ] || fail "Track verification failed"
 
 printf 'configured: %s/%s and Project %s\n' "$OWNER" "$REPOSITORY" "$project_number"
-printf 'created repository: %s; created Project: %s\n' "$REPO_CREATED" "$PROJECT_CREATED"
+printf 'created repository: %s; created Project: %s; added templates: %s\n' "$REPO_CREATED" "$PROJECT_CREATED" "$TEMPLATES_ADDED"

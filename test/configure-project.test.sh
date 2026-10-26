@@ -102,33 +102,60 @@ case "$1 $2" in
     jq -n --arg marker "$marker" --argjson items "${GH_TEST_PROJECT_ITEMS:-0}" '{id:"project-id",title:"Development - Software Factory",closed:false,public:false,shortDescription:$marker,items:{totalCount:$items}}'
     ;;
   "project field-list")
-    # Modes cover the default Status options on a new board or one left by an
-    # interrupted run, an existing field beyond the CLI's old default page, and
-    # a saturated lookup that must fail. Field state advances with each write.
-    case "${GH_TEST_MODE:-ok}" in
-      field-limit) jq -n '{fields: [range(0; 1000) | {name: ("Field " + tostring)}]}' ;;
-      many-fields) jq -n '{fields: ([{id:"status",name:"Status",options:[{name:"Inbox"},{name:"Ready"},{name:"In Progress"},{name:"In Review"},{name:"Done"}]}] + [range(0; 29) | {name:("Field " + tostring)}] + [{id:"risk",name:"Risk",options:[{name:"Standard"},{name:"Elevated"}]}])}' ;;
+    # Fields are derived from the mode and the writes logged so far: a new or
+    # interrupted Project starts with GitHub's default Status and gains Risk
+    # and Track only when they are created. many-fields hides Risk and Track
+    # beyond the CLI's old default page; track-conflict has foreign options.
+    mode=${GH_TEST_MODE:-ok}
+    if [ "$mode" = field-limit ]; then
+      jq -n '{fields: [range(0; 1000) | {name: ("Field " + tostring)}]}'
+      exit 0
+    fi
+    status='["Inbox","Ready","In Progress","In Review","Done"]'
+    risk=1
+    track=1
+    padding=0
+    track_options='["Fast","Standard","Product"]'
+    case "$mode" in
       new-project|new-repo|default-status)
-        if ! grep -q 'graphql --input' "$GH_TEST_LOG"; then
-          printf '%s\n' '{"fields":[{"id":"status","name":"Status","options":[{"name":"Todo"},{"name":"In Progress"},{"name":"Done"}]}]}'
-        elif ! grep -q 'project field-create' "$GH_TEST_LOG"; then
-          printf '%s\n' '{"fields":[{"id":"status","name":"Status","options":[{"name":"Inbox"},{"name":"Ready"},{"name":"In Progress"},{"name":"In Review"},{"name":"Done"}]}]}'
-        else
-          printf '%s\n' '{"fields":[{"id":"status","name":"Status","options":[{"name":"Inbox"},{"name":"Ready"},{"name":"In Progress"},{"name":"In Review"},{"name":"Done"}]},{"id":"risk","name":"Risk","options":[{"name":"Standard"},{"name":"Elevated"}]}]}'
-        fi
+        grep -q 'graphql --input' "$GH_TEST_LOG" || status='["Todo","In Progress","Done"]'
+        grep -q -- '--name Risk' "$GH_TEST_LOG" || risk=0
+        grep -q -- '--name Track' "$GH_TEST_LOG" || track=0
         ;;
-      *) printf '%s\n' '{"fields":[{"id":"status","name":"Status","options":[{"name":"Inbox"},{"name":"Ready"},{"name":"In Progress"},{"name":"In Review"},{"name":"Done"}]},{"id":"risk","name":"Risk","options":[{"name":"Standard"},{"name":"Elevated"}]}]}' ;;
+      many-fields) padding=29 ;;
+      track-conflict) track_options='["Small","Large"]' ;;
     esac
+    jq -n --argjson status "$status" --argjson risk "$risk" --argjson track "$track" --argjson padding "$padding" --argjson track_options "$track_options" '{fields: ([{id:"status",name:"Status",options:[$status[] | {name:.}]}] + [range(0; $padding) | {name:("Field " + tostring)}] + (if $risk == 1 then [{id:"risk",name:"Risk",options:[{name:"Standard"},{name:"Elevated"}]}] else [] end) + (if $track == 1 then [{id:"track",name:"Track",options:[$track_options[] | {name:.}]}] else [] end))}'
     ;;
   "project link"|"project field-create") exit 0 ;;
   # The query response supplies a linked repository, Status database ID, and
   # a grouped Board. no-board withholds the view until POST creates it.
   "api graphql")
+    # The repository template query reports PR templates. new-repo and
+    # no-templates start without one; new-repo gains it once it is written.
+    case "$*" in
+      *pullRequestTemplates*)
+        if { [ "${GH_TEST_MODE:-ok}" = new-repo ] || [ "${GH_TEST_MODE:-ok}" = no-templates ]; } && ! grep -q 'PUT repos/test/project/contents/.github/pull_request_template.md' "$GH_TEST_LOG"; then
+          printf '%s\n' '{"data":{"repository":{"pullRequestTemplates":[]}}}'
+        else
+          printf '%s\n' '{"data":{"repository":{"pullRequestTemplates":[{"filename":"pull_request_template.md"}]}}}'
+        fi
+        exit 0
+        ;;
+    esac
     if [ "${GH_TEST_MODE:-ok}" = no-board ] && ! grep -Eq 'POST (users|orgs)/test/projectsV2/7/views' "$GH_TEST_LOG"; then
       printf '%s\n' '{"data":{"node":{"repositories":{"pageInfo":{"hasNextPage":false},"nodes":[{"nameWithOwner":"test/project"}]},"fields":{"pageInfo":{"hasNextPage":false},"nodes":[{"databaseId":5,"name":"Status"}]},"views":{"pageInfo":{"hasNextPage":false},"nodes":[]}}}}'
     else
       printf '%s\n' '{"data":{"node":{"repositories":{"pageInfo":{"hasNextPage":false},"nodes":[{"nameWithOwner":"test/project"}]},"fields":{"pageInfo":{"hasNextPage":false},"nodes":[{"databaseId":5,"name":"Status"}]},"views":{"pageInfo":{"hasNextPage":false},"nodes":[{"id":"view","name":"Board","layout":"BOARD_LAYOUT","verticalGroupByFields":{"nodes":[{"name":"Status"}]}}]}}}}'
     fi
+    ;;
+  # The change issue form exists unless the mode starts without templates.
+  "api repos/test/project/contents/.github/ISSUE_TEMPLATE/change.yml")
+    if { [ "${GH_TEST_MODE:-ok}" = new-repo ] || [ "${GH_TEST_MODE:-ok}" = no-templates ]; } && ! grep -q 'PUT repos/test/project/contents/.github/ISSUE_TEMPLATE/change.yml' "$GH_TEST_LOG"; then
+      printf 'gh: Not Found (HTTP 404)\n' >&2
+      exit 1
+    fi
+    printf '%s\n' '{"path":".github/ISSUE_TEMPLATE/change.yml"}'
     ;;
   "api repos/test/project/rulesets?per_page=100")
     # foreign-ci starts without the factory ruleset; after POST it appears.
@@ -154,6 +181,12 @@ case "$1 $2" in
       *"PUT repos/test/project/contents/.github/workflows/ci.yml"*)
         if [ -n "${GH_TEST_CI_BODY:-}" ]; then cat > "$GH_TEST_CI_BODY"; fi
         exit 0 ;;
+      *"PUT repos/test/project/contents/.github/ISSUE_TEMPLATE/change.yml"*)
+        if [ -n "${GH_TEST_FORM_BODY:-}" ]; then cat > "$GH_TEST_FORM_BODY"; fi
+        exit 0 ;;
+      *"PUT repos/test/project/contents/.github/pull_request_template.md"*)
+        if [ -n "${GH_TEST_PR_TEMPLATE_BODY:-}" ]; then cat > "$GH_TEST_PR_TEMPLATE_BODY"; fi
+        exit 0 ;;
       *"POST users/test/projectsV2/7/views"*|*"POST orgs/test/projectsV2/7/views"*|*"POST repos/test/project/rulesets"*|*"POST repos/test/project/branches/master/rename"*) exit 0 ;;
       *) printf 'unexpected mutating API call: %s\n' "$*" >&2; exit 90 ;;
     esac
@@ -177,7 +210,7 @@ run_configure >/dev/null
 # A compatible factory setup is idempotent and does not update fields or
 # create resources again.
 run_configure --apply >/dev/null
-if grep -Eq 'project create|project edit|field-create|graphql --input|--method POST' "$LOG"; then
+if grep -Eq 'project create|project edit|field-create|graphql --input|--method POST|--method PUT' "$LOG"; then
   fail "idempotent apply attempted a creation or field update"
 fi
 
@@ -195,6 +228,7 @@ GH_TEST_MODE=new-project run_configure --apply >/dev/null
 grep -q 'project create --owner test --title Development - Software Factory' "$LOG" || fail "factory Project was not created separately"
 grep -q 'project edit 8 --owner test --description Managed by Software Factory' "$LOG" || fail "new Project was not marked"
 grep -q 'graphql --input' "$LOG" || fail "new Project Status was not configured"
+grep -q -- '--name Track --data-type SINGLE_SELECT --single-select-options Fast,Standard,Product' "$LOG" || fail "new Project Track field was not created"
 if grep -q 'project edit 3' "$LOG"; then fail "original Project was modified"; fi
 
 : > "$LOG"
@@ -215,6 +249,16 @@ grep -q 'repo create test/project --private --add-readme' "$LOG" || fail "missin
 grep -q 'POST repos/test/project/branches/master/rename -f new_name=main' "$LOG" || fail "new repository branch was not renamed to main"
 jq -r '.content' "$CI_BODY" | base64 --decode | grep -q 'branches: \["main"\]' || fail "new repository CI was not pinned to main"
 jq -e '.branch == "main"' "$CI_BODY" >/dev/null || fail "new repository CI was not committed to main"
+
+: > "$LOG"
+# A new repository also receives the change issue form and PR template from
+# this repository's templates/ folder, committed to main.
+FORM_BODY="$TEST_ROOT/form-body.json"
+PR_TEMPLATE_BODY="$TEST_ROOT/pr-template-body.json"
+GH_TEST_MODE=new-repo GH_TEST_FORM_BODY="$FORM_BODY" GH_TEST_PR_TEMPLATE_BODY="$PR_TEMPLATE_BODY" run_configure --apply >/dev/null || fail "new repository template setup failed"
+jq -r '.content' "$FORM_BODY" | base64 --decode | cmp -s - "$ROOT/templates/change.yml" || fail "issue form does not match templates/change.yml"
+jq -r '.content' "$PR_TEMPLATE_BODY" | base64 --decode | cmp -s - "$ROOT/templates/pull_request_template.md" || fail "PR template does not match templates/pull_request_template.md"
+jq -e '.branch == "main"' "$FORM_BODY" >/dev/null || fail "issue form was not committed to main"
 
 : > "$LOG"
 # GitHub uses different view endpoints for user and organization owners.
@@ -247,6 +291,15 @@ expect_failure_without_mutation ambiguous-ci
 expect_failure_without_mutation no-ci --required-check build
 expect_failure_without_mutation limit
 expect_failure_without_mutation repo-error
+expect_failure_without_mutation track-conflict
+
+: > "$LOG"
+# Behind an existing factory ruleset, missing templates cannot be committed
+# directly: setup reports them and still completes without writing.
+output=$(GH_TEST_MODE=no-templates run_configure --apply) || fail "missing templates behind a ruleset failed setup"
+printf '%s' "$output" | grep -q 'missing .github/ISSUE_TEMPLATE/change.yml: add it through a pull request' || fail "missing issue form was not reported"
+printf '%s' "$output" | grep -q 'missing .github/pull_request_template.md: add it through a pull request' || fail "missing PR template was not reported"
+if grep -q -- '--method PUT' "$LOG"; then fail "templates were written behind an existing ruleset"; fi
 
 # A run interrupted after marking a new Project leaves GitHub's default Status
 # options. With no cards to invalidate, a rerun finishes the configuration.
@@ -288,7 +341,7 @@ if grep -q 'commits/main/check-runs' "$LOG"; then fail "explicit pull-request-on
 : > "$LOG"
 # Risk beyond thirty fields must be found, never created a second time.
 GH_TEST_MODE=many-fields run_configure --apply >/dev/null
-if grep -q 'project field-create' "$LOG"; then fail "existing Risk field beyond default lookup limit was recreated"; fi
+if grep -q 'project field-create' "$LOG"; then fail "existing Risk or Track field beyond default lookup limit was recreated"; fi
 grep -q 'project field-list 7 --owner test --limit 1000' "$LOG" || fail "Project fields were fetched with the default limit"
 
 : > "$LOG"

@@ -1,0 +1,61 @@
+name: Change
+description: An agreed change for the Software Factory
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What can't a user or operator do today?
+    validations:
+      required: true
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Outcome
+      description: What is true when this is done?
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope
+      description: What is in, and what is explicitly out.
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: Numbered and observable; each names how it is proven.
+      value: |
+        - AC1:
+        - AC2:
+    validations:
+      required: true
+  - type: dropdown
+    id: track
+    attributes:
+      label: Track
+      options:
+        - Fast
+        - Standard
+        - Product
+    validations:
+      required: true
+  - type: dropdown
+    id: risk
+    attributes:
+      label: Risk
+      options:
+        - Standard
+        - Elevated
+    validations:
+      required: true
+  - type: input
+    id: design
+    attributes:
+      label: Design reference
+      description: Claude Design prototype link and viewports, for UI work.
+  - type: textarea
+    id: questions
+    attributes:
+      label: Open questions
+      description: Each one answered, or deferred with an owner.

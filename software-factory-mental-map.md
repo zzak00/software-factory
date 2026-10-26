@@ -54,7 +54,7 @@ Skill modes: **auto** starts by itself at that point; *suggested* is loaded by t
 
 ### Clarify -> Ready
 
-- Tools: GitHub issue, Project (Status, Risk, Track).
+- Tools: GitHub issue from the Change form, Project (Status, Risk, Track).
 - Skills: `grilling` (only when ambiguous), `to-spec` -> **auto** Plannotator gate. Fast track: write the 1-3 ACs directly.
 - UI work: link the approved Claude Design prototype; UI ACs name it and the viewports.
 
