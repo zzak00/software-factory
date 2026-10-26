@@ -88,8 +88,8 @@ backnotprop/plannotator
 -----------------------
 
 Source: https://github.com/backnotprop/plannotator
-Release: v0.27.12
-Revision: 96313ab228ede843203d38d9d2a86e1c87e18c81
+Release: v0.27.20
+Revision: 7bc60214f690d4db39dcaa5dcfd64abc8948330e
 The upstream project offers MIT or Apache-2.0; this distribution uses MIT.
 
 MIT License

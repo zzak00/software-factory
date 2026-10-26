@@ -1,28 +1,32 @@
 ---
 name: plannotator-review
-description: "Open Plannotator for an explicit committed or working diff and verify that the reviewed boundary does not change."
+description: "Open the exact CI-passing pull request head, or an explicit diff, in Plannotator for human review, and verify that the reviewed boundary did not change."
 disable-model-invocation: true
 ---
 
 # Plannotator Review
 
-Use only when the user explicitly invokes this skill with a committed boundary
-(`base`, `head`) or working boundary (`staged`, `unstaged`, `untracked`, or
-`combined`). It is standalone and requires no other skill, tracker, branch
-convention, or workflow state.
+Use when the user invokes this skill with a pull request, a committed boundary (`base`, `head`), or a working boundary (`staged`, `unstaged`, or `combined`).
+
+## Gate a pull request
+
+For a pull request, the reviewed head must be what will merge:
+
+1. `gh pr view NUMBER --json headRefOid,baseRefName` gives the head SHA and base branch.
+2. The local checkout's `HEAD` equals that head SHA.
+3. `gh pr checks NUMBER` reports every required check passing.
+
+Stop if any of these fails. Review against `origin/<baseRefName>` after `git fetch origin`.
 
 ## Capture the boundary
 
-Before launch, resolve the boundary and record the repository root, complete
-changed-file manifest, and SHA-256 digest of the complete patch. For committed
-work, require base ancestry and current checkout content matching the requested
-head. For working review, record `HEAD` and include exactly the requested state.
+Before launch, record the repository root, the complete changed-file manifest, and the SHA-256 digest of the complete patch. For committed work, require the base to be an ancestor of the head. For working review, record `HEAD` and include exactly the requested state.
 
-Stop if the installed Plannotator cannot represent the boundary exactly.
+Stop if Plannotator cannot represent the boundary exactly.
 
 ## Run the review
 
-For committed work, launch through the harness terminal tool:
+For committed work and pull requests, launch through the harness terminal:
 
 ```bash
 PLANNOTATOR_AI=disabled \
@@ -31,40 +35,21 @@ PLANNOTATOR_REMOTE=0 \
 plannotator review --git --base <base> --diff-type since-base --json
 ```
 
-`--json` makes Plannotator emit one decision record on exit. For working review,
-map the boundary to the matching `--diff-type`: `staged` to `staged` and
-`unstaged` to `unstaged`. Plannotator's diff types cover tracked changes only, so
-a boundary that includes untracked content (`untracked`, or `combined` when
-untracked files are present) has no exact representation; stop rather than
-approximate it. A `combined` boundary with no untracked files maps to
-`uncommitted`. Pass `--json` the same way, and add `--no-git-remote-check` only
-when the user requests a local-only review.
+For working review, map the boundary to `--diff-type`: `staged` to `staged`, `unstaged` to `unstaged`, and `combined` with no untracked files to `uncommitted`. Plannotator's diff types cover tracked changes only, so a boundary with untracked files has no exact representation: stop rather than approximate it. Add `--no-git-remote-check` only when the user asks for a local-only review.
 
-Request the narrow approval required to start the local browser when the
-harness sandbox blocks it. Wait for completion. Do not ask the user to copy a
-command, use a shell escape, or stage or unstage through the review interface.
+Request the narrow approval needed to start the local browser when the harness sandbox blocks it. Wait for completion. Run the command yourself; never ask the user to copy it.
 
-Before submission, require the human to confirm the displayed boundary and
-Files view match the recorded boundary and manifest.
+Before submission, the human confirms that the displayed boundary and Files view match the recorded manifest.
 
 ## Verify and return
 
-After exit, recapture the boundary. The head or working state, patch digest,
-and complete manifest must match the pre-review record. Any mismatch invalidates
-the result, including approval.
+After exit, recapture the boundary. The head or working state, the patch digest, and the manifest must match the pre-review record; any mismatch invalidates the result, including an approval.
 
-Read the outcome from the JSON `decision` field (`approved`, `annotated`, or
-`dismissed`), not the message text.
+Read the outcome from the JSON `decision` field (`approved`, `annotated`, or `dismissed`), not from the message text.
 
-Verify returned annotations against accepted intent and source. Classify each
-as `Confirmed`, `Partly`, `Not a bug`, or `Intended`, with concise evidence and
-whether it is introduced, pre-existing, or accepted scope. Identify scope
-changes separately and ask the smallest product question needed to make their
-behavior testable.
+Check each annotation against the accepted intent and the source. Classify it as `Confirmed`, `Partly`, `Not a bug`, or `Intended`, with brief evidence, and say whether it was introduced, pre-existing, or accepted scope. List scope changes separately, each with the smallest product question needed to make it testable.
 
-For confirmed defects, return file and line anchors, expected corrected
-behavior, and objective validation commands. For approval, report the exact
-boundary and patch digest.
+- **Confirmed defect:** file and line, expected behavior, and the command that will prove the fix.
+- **Approval:** report the exact boundary, head SHA, and patch digest. The operator merges with `--match-head-commit <head SHA>`.
 
-Do not edit files, mutate Git or tracker state, publish, or invoke another
-skill.
+Do not edit files, change Git, the issue, or the PR, or invoke another skill.
