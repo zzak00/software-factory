@@ -47,7 +47,7 @@
 <rect x="178" y="458" width="60" height="12" rx="2" fill="transparent" stroke="#2d3142" stroke-opacity="0.45" stroke-width="0.8"/>
 <text x="208.0" y="467" fill="#2d3142" fill-opacity="0.85" font-size="7" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.08em">SUB-AGENTS</text>
 <text x="248" y="468" fill="#2d3142" font-size="12" font-weight="600" font-family="Geist, system-ui, sans-serif">Review: code-review</text>
-<text x="182" y="486" fill="#4f5d75" font-size="9" font-family="'Geist Mono', ui-monospace, monospace">Standards + Spec sub-agents · Elevated: blast-radius + second model</text>
+<text x="182" y="486" fill="#4f5d75" font-size="9" font-family="'Geist Mono', ui-monospace, monospace">Standards + Spec sub-agents · Elevated: second reviewer on another model</text>
 <text x="154" y="556" fill="#5a6580" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="end" letter-spacing="0.14em">07</text>
 <rect x="170" y="534" width="620" height="58" rx="6" fill="#f5f5f5"/>
 <rect x="170" y="534" width="620" height="58" rx="6" fill="#f5f5f5" stroke="#2d3142" stroke-width="1"/>
@@ -61,7 +61,7 @@
 <rect x="178" y="626" width="26" height="12" rx="2" fill="transparent" stroke="#bf4520" stroke-opacity="0.45" stroke-width="0.8"/>
 <text x="191.0" y="635" fill="#bf4520" fill-opacity="0.85" font-size="7" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.08em">YOU</text>
 <text x="214" y="636" fill="#2d3142" font-size="12" font-weight="600" font-family="Geist, system-ui, sans-serif">Human review and merge</text>
-<text x="182" y="654" fill="#4f5d75" font-size="9" font-family="'Geist Mono', ui-monospace, monospace">plannotator-review on exact head · merge --match-head-commit · correct on repeats</text>
+<text x="182" y="654" fill="#4f5d75" font-size="9" font-family="'Geist Mono', ui-monospace, monospace">plannotator-review on exact head · merge --match-head-commit · ff main</text>
 <text x="808" y="388" fill="#bf4520" font-size="14" font-style="italic" font-family="'Instrument Serif', serif">Deviation from the</text><text x="808" y="406" fill="#bf4520" font-size="14" font-style="italic" font-family="'Instrument Serif', serif">sketch? Back to the</text><text x="808" y="424" fill="#bf4520" font-size="14" font-style="italic" font-family="'Instrument Serif', serif">plan for approval.</text>
 <line x1="30" y1="712" x2="930" y2="712" stroke="rgba(45,49,66,0.10)" stroke-width="0.8"/>
 <text x="30" y="730" fill="#4f5d75" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" letter-spacing="0.14em">LEGEND</text>

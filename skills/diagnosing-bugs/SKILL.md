@@ -14,7 +14,7 @@ When exploring the codebase, read the repository's CLAUDE.md or AGENTS.md and th
 - A bug issue from triage, before any fix is written.
 - An unexpected failure found later whose cause isn't obvious: a failing check, CI run, `verify-<app>` journey, or review finding that shows wrong behavior in new code.
 
-Not for the expected red step of a `tdd` cycle, and not a general review of generated code: that is `code-review`, plus `blast-radius` for Elevated risk.
+Not for the expected red step of a `tdd` cycle, and not a general review of generated code: that is `code-review`.
 
 ## Redact
 

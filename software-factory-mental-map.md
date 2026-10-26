@@ -94,7 +94,7 @@ Skill modes: **auto** starts by itself at that point; *suggested* is loaded by t
 ### Review -> In Review
 
 - Tools: `git diff BASE..HEAD`.
-- Skills: *`code-review`* in a fresh context (Standards axis + Spec axis against the ACs); *`blast-radius`* when Risk is Elevated. Elevated: a second reviewer on a different model.
+- Skills: *`code-review`* in a fresh context (Standards axis + Spec axis against the ACs). Elevated: a second reviewer on a different model.
 
 **Done when:** findings are resolved and the reviewed SHA is recorded.
 
@@ -108,7 +108,7 @@ Skill modes: **auto** starts by itself at that point; *suggested* is loaded by t
 ### Maintain
 
 - Tools: `git fetch origin`, `git switch main`, `git merge --ff-only origin/main`, `git rev-parse main origin/main`; `wt remove BRANCH` only on your cleanup decision.
-- Skills: `correct` when the same agent mistake happens twice (enforce it in structure, not prose); `maintain-verification-skill` when `verify-<app>` drifts.
+- Skills: `maintain-verification-skill` when `verify-<app>` drifts. When an agent repeats a mistake, add the rule to the nearest AGENTS.md with `writing-for-agents`.
 
 **Done when:** local main equals origin/main, the key check passes, and the issue is closed. Cleanup is a separate decision.
 
@@ -120,7 +120,7 @@ Skill modes: **auto** starts by itself at that point; *suggested* is loaded by t
 | Setup (once per repo) | `writing-for-agents`, `git-guardrails-claude-code`, `create-verification-skill`, `/design-sync` (built-in) |
 | Product | `prototype`, `domain-modeling`, `wayfinder`, `to-tickets` |
 | Stack | `api-and-interface-design`, `frontend-ui-engineering` |
-| Optional | `blast-radius`, `correct`, `maintain-verification-skill`, `focused-output` |
+| Optional | `maintain-verification-skill`, `focused-output` |
 
 Python conventions live in each repo's CLAUDE.md, not in a skill.
 

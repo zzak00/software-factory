@@ -83,7 +83,7 @@ Present the two reports under `## Standards` and `## Spec` headings, verbatim or
 
 End with a one-line summary: total findings per axis, and the worst issue _within each axis_ (if any). Don't pick a single winner across axes: that's the reranking the separation exists to prevent.
 
-Close with the reviewed SHA. For Elevated risk, suggest `blast-radius` and a second review on a different model.
+Close with the reviewed SHA. For Elevated risk, suggest a second review on a different model.
 
 ## Why two axes
 
