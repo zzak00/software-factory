@@ -1,0 +1,5 @@
+interface:
+  display_name: "Git Guardrails for Claude Code"
+  short_description: "Install repository Git safety hooks"
+policy:
+  allow_implicit_invocation: false

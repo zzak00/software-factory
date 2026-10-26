@@ -18,9 +18,11 @@ jobs:
         run: bash test/configure-project.test.sh
       - name: Exercise optional skill installation
         run: bash test/install-skills.test.sh
+      - name: Exercise git guardrails
+        run: bash test/git-guardrails.test.sh
       - name: Check shell syntax
-        run: bash -n scripts/*.sh test/*.sh
+        run: bash -n scripts/*.sh test/*.sh skills/*/scripts/*.sh
       - name: Install ShellCheck when needed
         run: command -v shellcheck >/dev/null || brew install shellcheck
       - name: Lint shell scripts
-        run: shellcheck scripts/*.sh test/*.sh
+        run: shellcheck scripts/*.sh test/*.sh skills/*/scripts/*.sh

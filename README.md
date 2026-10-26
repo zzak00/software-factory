@@ -105,5 +105,6 @@ The [mental map](software-factory-mental-map.md) gives each stage's steps, skill
 
     bash test/configure-project.test.sh
     bash test/install-skills.test.sh
-    bash -n scripts/*.sh test/*.sh
-    shellcheck scripts/*.sh test/*.sh
+    bash test/git-guardrails.test.sh
+    bash -n scripts/*.sh test/*.sh skills/*/scripts/*.sh
+    shellcheck scripts/*.sh test/*.sh skills/*/scripts/*.sh

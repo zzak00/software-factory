@@ -1,0 +1,5 @@
+interface:
+  display_name: "Create Verification Skill"
+  short_description: "Generate and prove a repo skill that drives the app like a user"
+policy:
+  allow_implicit_invocation: false

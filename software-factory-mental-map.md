@@ -51,7 +51,7 @@ Skill modes: **auto** starts by itself at that point; *suggested* is loaded by t
 ### Prepare -> In Progress
 
 - Tools: `git`, `wt switch --create BRANCH --base SHA --no-cd --no-hooks`, repo setup commands.
-- Once per repo, before the first item:
+- Once per repo: an existing repository before its first item; a new project inside slice 1, after Discovery:
   - `scripts/configure-project.sh`: repository on main, factory Project, ruleset, starter CI;
   - `writing-for-agents`: CLAUDE.md and AGENTS.md;
   - `git-guardrails-claude-code`: git hooks;
