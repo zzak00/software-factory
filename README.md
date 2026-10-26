@@ -45,18 +45,18 @@ Preview the intended resources:
       --project-title "Development" \
       --visibility private
 
-Run the same command with --apply when ready. The configurator always targets a Project named "Development - Software Factory" in this example. An existing "Development" Project and its cards remain untouched. The factory Project carries a description marker; a same-named Project without that marker is treated as a conflict.
+Run the same command with --apply when ready. A repository created by setup gets main as its default branch, regardless of the owner's GitHub setting; an existing repository keeps its default branch. The configurator always targets a Project named "Development - Software Factory" in this example. An existing "Development" Project and its cards remain untouched. The factory Project carries a description marker; a same-named Project without that marker is treated as a conflict.
 
 The factory Project has Status options Inbox, Ready, In Progress, In Review, and Done, plus Risk options Standard and Elevated. It is linked to the repository and has a Board view grouped by Status. Reusing a marked Project requires compatible fields and visibility. Status options on a Project that holds cards are never rewritten.
 
-For a repository without CI, setup adds one Python quality workflow. Its verify job runs Ruff lint and a formatting check on pull requests and pushes to the default branch. These checks report issues but do not edit files. Run Ruff locally to fix them:
+For a repository without CI, setup adds one Python quality workflow. Its verify job runs Ruff lint and a formatting check on pull requests and pushes to the default branch. In a repository without Python files, verify passes without checking anything; add the project's own checks to that job or pass --required-check for existing CI. These checks report issues but do not edit files. Run Ruff locally to fix them:
 
     ruff check .
     ruff format .
 
 For a repository with CI, setup reads checks published on its default branch. If exactly one check name exists, it requires that check. If no check or several check names exist, pass --required-check NAME after confirming the check name in GitHub. This also supports checks that run only on pull requests. Existing workflows are preserved. The ruleset requires a pull request, the chosen check, resolved review threads, and an up-to-date branch; it blocks deletion and force pushes. A conflicting factory ruleset is reported and left untouched.
 
-The default command is a dry run. It does not contact GitHub, so the final check name and whether a Project will be reused are resolved during --apply. An interrupted creation before the Project receives its marker requires inspection before another run. After the marker, a rerun finishes an interrupted Project that still has GitHub's default Status options and no cards.
+The default command is a dry run. It does not contact GitHub, so the final check name and whether a Project will be reused are resolved during --apply. An interrupted creation before the Project receives its marker requires inspection before another run. After the marker, a rerun finishes the Status options and visibility of an interrupted Project that still has GitHub's default Status options and no cards.
 
 ## Development workflow
 
@@ -90,7 +90,7 @@ Standard work can proceed under an approved workflow policy. Elevated work needs
 
 ### Maintain
 
-After merge, fast-forward local main, verify it matches the remote object ID, and rerun the crucial target-project check:
+After merge, fast-forward local main, verify it matches the remote object ID, and rerun the crucial target-project check. For an existing repository with another default branch, use that name instead of main:
 
     git fetch origin
     git switch main

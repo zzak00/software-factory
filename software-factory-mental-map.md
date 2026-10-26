@@ -17,7 +17,7 @@ GitHub issue / discussion
 
 Run `scripts/configure-project.sh` first as a dry run, then with `--apply` for the chosen owner, repository, title, and visibility. It uses `gh` to inspect or create the repository, a dedicated GitHub Project, a default-branch ruleset, and, only when CI is absent, a Python quality workflow. `jq` builds and reads the API payloads. Existing CI stays in place; supply `--required-check` when its check name cannot be inferred safely. `scripts/install-skills.sh` can independently install the optional skills from this repository into Codex or Claude Code after verifying `skills.lock`.
 
-The factory Project is named `<requested title> - Software Factory`. During migration, the original Project keeps every card, field, and view. The factory Project has Status values `Inbox`, `Ready`, `In Progress`, `In Review`, `Done` and Risk values `Standard`, `Elevated`. Setup never moves cards or rewrites Status options in a Project that holds cards; it only finishes an empty factory Project that an interrupted run left with GitHub's default options. A marked, compatible factory Project can be reused; a collision or conflict stops setup.
+The factory Project is named `<requested title> - Software Factory`. During migration, the original Project keeps every card, field, and view. The factory Project has Status values `Inbox`, `Ready`, `In Progress`, `In Review`, `Done` and Risk values `Standard`, `Elevated`. Setup never moves cards or rewrites Status options in a Project that holds cards; it only finishes the Status options and visibility of an empty factory Project that an interrupted run left with GitHub's default options. A marked, compatible factory Project can be reused; a collision or conflict stops setup.
 
 The optional `focused-output` skill shapes concise communication throughout the flow. It does not change code or workflow state. Skills are portable helpers: the operator passes them explicit context, and the GitHub issue, Project, branch, review, and approval sequence remain outside the skills.
 
@@ -88,7 +88,7 @@ A product requirements document can be a source for product-heavy work, but the 
 
 ## 6. Maintain: align the local checkout with the merge
 
-**Tools:** `git fetch origin`, `git switch main`, `git merge --ff-only origin/main`, and `git rev-parse` for both local and remote main. Run the crucial target-repository check once more.
+**Tools:** `git fetch origin`, `git switch main`, `git merge --ff-only origin/main`, and `git rev-parse` for both local and remote main. An existing repository with another default branch uses that name instead. Run the crucial target-repository check once more.
 
 **Work:** Confirm local main names the same object as the remote and that the merged result still passes its key check. Decide on branch and worktree cleanup separately. Migrate old Project cards only through a separately agreed migration.
 
