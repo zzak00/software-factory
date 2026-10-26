@@ -79,6 +79,8 @@ The factory Project has Status options Inbox, Ready, In Progress, In Review, and
 
 Setup also adds a change issue form (`.github/ISSUE_TEMPLATE/change.yml`) and a pull request template (`.github/pull_request_template.md`) when they are absent. The master copies live in `templates/`; existing templates are never replaced. Behind an existing factory ruleset, setup lists a missing template to add through a pull request instead of committing it.
 
+New issues reach the board through the Project's built-in workflows: Auto-add to project (filter `is:issue,pr is:open repo:OWNER/REPO`), Item added to project (Status Inbox), Item closed (Done), and Pull request merged (Done). GitHub's API can read these workflows but not enable them, so turn them on once in the Project's Workflows page. Every run lists the ones still off under `action needed` and counts them in `workflows to enable`. The API does not show which Status or filter a workflow uses; check those in the same page.
+
 For a repository without CI, setup adds one Python quality workflow. Its verify job runs Ruff lint and a formatting check on pull requests and pushes to the default branch. In a repository without Python files, verify passes without checking anything; add the project's own checks to that job or pass --required-check for existing CI. These checks report issues but do not edit files. Run Ruff locally to fix them:
 
     ruff check .

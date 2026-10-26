@@ -154,6 +154,16 @@ case "$1 $2" in
         fi
         exit 0
         ;;
+      # The built-in Project workflows query. workflows-off mirrors a new
+      # Project: only sub-issue auto-add is on and auto-add is absent.
+      *workflows*)
+        if [ "${GH_TEST_MODE:-ok}" = workflows-off ]; then
+          printf '%s\n' '{"data":{"node":{"workflows":{"pageInfo":{"hasNextPage":false},"nodes":[{"name":"Auto-add sub-issues to project","enabled":true},{"name":"Item added to project","enabled":false},{"name":"Item closed","enabled":false},{"name":"Pull request merged","enabled":false}]}}}}'
+        else
+          printf '%s\n' '{"data":{"node":{"workflows":{"pageInfo":{"hasNextPage":false},"nodes":[{"name":"Auto-add to project","enabled":true},{"name":"Item added to project","enabled":true},{"name":"Item closed","enabled":true},{"name":"Pull request merged","enabled":true}]}}}}'
+        fi
+        exit 0
+        ;;
     esac
     if [ "${GH_TEST_MODE:-ok}" = no-board ] && ! grep -Eq 'POST (users|orgs)/test/projectsV2/7/views' "$GH_TEST_LOG"; then
       printf '%s\n' '{"data":{"node":{"repositories":{"pageInfo":{"hasNextPage":false},"nodes":[{"nameWithOwner":"test/project"}]},"fields":{"pageInfo":{"hasNextPage":false},"nodes":[{"databaseId":5,"name":"Status"}]},"views":{"pageInfo":{"hasNextPage":false},"nodes":[]}}}}'
@@ -221,10 +231,24 @@ run_configure >/dev/null
 : > "$LOG"
 # A compatible factory setup is idempotent and does not update fields or
 # create resources again.
-run_configure --apply >/dev/null
+output=$(run_configure --apply) || fail "compatible factory setup failed"
 if grep -Eq 'project create|project edit|field-create|graphql --input|--method POST|--method PUT' "$LOG"; then
   fail "idempotent apply attempted a creation or field update"
 fi
+printf '%s' "$output" | grep -q 'action needed' && fail "enabled Project workflows were reported as missing"
+printf '%s' "$output" | grep -q 'workflows to enable: 0' || fail "enabled Project workflows were not counted"
+
+: > "$LOG"
+# GitHub cannot enable built-in Project workflows through its API. Setup lists
+# each one that is off or absent, with the setting to choose, and still exits 0.
+output=$(GH_TEST_MODE=workflows-off run_configure --apply) || fail "disabled Project workflows failed setup"
+printf '%s' "$output" | grep -q 'action needed in https://github.com/users/test/projects/7/workflows:' || fail "Project workflow page was not reported"
+printf '%s' "$output" | grep -q -- '- Auto-add to project: on, filter is:issue,pr is:open repo:test/project' || fail "absent auto-add workflow was not reported"
+printf '%s' "$output" | grep -q -- '- Item added to project: on, set Status to Inbox' || fail "disabled item-added workflow was not reported"
+printf '%s' "$output" | grep -q -- '- Item closed: on, set Status to Done' || fail "disabled item-closed workflow was not reported"
+printf '%s' "$output" | grep -q -- '- Pull request merged: on, set Status to Done' || fail "disabled pull-request-merged workflow was not reported"
+printf '%s' "$output" | grep -q 'workflows to enable: 4' || fail "disabled Project workflows were not counted"
+if grep -Eq 'graphql --input|deleteProjectV2Workflow' "$LOG"; then fail "Project workflows were changed"; fi
 
 : > "$LOG"
 # The first workflow run may not exist yet. The configured ruleset still lets

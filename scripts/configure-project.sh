@@ -456,5 +456,38 @@ final_track=$(printf '%s' "$fields" | jq -r '.fields[] | select(.name == "Track"
 [ "$final_risk" = "Standard,Elevated" ] || fail "Risk verification failed"
 [ "$final_track" = "Fast,Standard,Product" ] || fail "Track verification failed"
 
+# Built-in Project workflows put new issues in Inbox and closed or merged work
+# in Done. GitHub's API can read them but not enable them, so list each one
+# that is off or absent, with the setting to choose in the web UI. The API
+# does not expose the chosen Status or filter; those remain a human check.
+# GraphQL variables are intentionally literal here.
+# shellcheck disable=SC2016
+workflow_query='query($id: ID!) { node(id: $id) { ... on ProjectV2 { workflows(first: 50) { pageInfo { hasNextPage } nodes { name enabled } } } } }'
+project_workflows=$(gh api graphql -f query="$workflow_query" -F id="$project_id") || fail "cannot inspect Project workflows"
+printf '%s' "$project_workflows" | jq -e '.data.node.workflows.pageInfo.hasNextPage == false' >/dev/null || fail "Project workflow lookup is incomplete"
+workflow_actions=""
+workflow_missing=0
+for required in \
+  "Auto-add to project|on, filter is:issue,pr is:open repo:$OWNER/$REPOSITORY" \
+  "Item added to project|on, set Status to Inbox" \
+  "Item closed|on, set Status to Done" \
+  "Pull request merged|on, set Status to Done"; do
+  name=${required%%|*}
+  enabled=$(printf '%s' "$project_workflows" | jq --arg name "$name" '[.data.node.workflows.nodes[] | select(.name == $name and .enabled)] | length')
+  if [ "$enabled" -eq 0 ]; then
+    workflow_actions="$workflow_actions- $name: ${required#*|}
+"
+    workflow_missing=$((workflow_missing + 1))
+  fi
+done
+if [ "$workflow_missing" -gt 0 ]; then
+  if [ "$owner_type" = Organization ]; then
+    workflow_page="https://github.com/orgs/$OWNER/projects/$project_number/workflows"
+  else
+    workflow_page="https://github.com/users/$OWNER/projects/$project_number/workflows"
+  fi
+  printf 'action needed in %s:\n%s' "$workflow_page" "$workflow_actions"
+fi
+
 printf 'configured: %s/%s and Project %s\n' "$OWNER" "$REPOSITORY" "$project_number"
-printf 'created repository: %s; created Project: %s; added templates: %s\n' "$REPO_CREATED" "$PROJECT_CREATED" "$TEMPLATES_ADDED"
+printf 'created repository: %s; created Project: %s; added templates: %s; workflows to enable: %s\n' "$REPO_CREATED" "$PROJECT_CREATED" "$TEMPLATES_ADDED" "$workflow_missing"

@@ -16,6 +16,7 @@ A direct, reviewable path from accepted intent to merged code. It works without 
 - Read every ruleset page before deciding one is absent. Reject a Project GraphQL result whose repository, field, or view connection has more pages, so a partial lookup cannot trigger a duplicate link or Board.
 - The factory Project has a Track field (Fast, Standard, Product) beside Status and Risk, created and checked the same way as Risk.
 - Setup adds the change issue form and pull request template from `templates/` only when absent, never replacing an existing template, and only before the factory ruleset requires pull requests.
+- New issues land in Inbox, and closed issues and merged pull requests move to Done, through the Project's built-in workflows. GitHub's API cannot enable them, so they are turned on in the web UI; setup reads them on every run and lists any that are off. No token-based Action is used.
 - Agent skills are an optional, separately installed artifact kept in this repository. Their installer verifies exact lock coverage and refuses differing destinations. The mental map is Markdown, and this repository does not use npm.
 
 ## Accepted workflow decisions
