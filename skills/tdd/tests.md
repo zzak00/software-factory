@@ -1,4 +1,5 @@
 # Good and Bad Tests
+
 ## Good Tests
 
 **Integration-style**: Test through real interfaces, not mocks of internal parts.
@@ -14,11 +15,13 @@ test("user can checkout with valid cart", async () => {
 ```
 
 Characteristics:
+
 - Tests behavior users/callers care about
 - Uses public API only
 - Survives internal refactors
 - Describes WHAT, not HOW
 - One logical assertion per test
+
 ## Bad Tests
 
 **Implementation-detail tests**: Coupled to internal structure.
@@ -33,6 +36,7 @@ test("checkout calls paymentService.process", async () => {
 ```
 
 Red flags:
+
 - Mocking internal collaborators
 - Testing private methods
 - Asserting on call counts/order
@@ -47,6 +51,7 @@ test("createUser saves to database", async () => {
   const row = await db.query("SELECT * FROM users WHERE name = ?", ["Alice"]);
   expect(row).toBeDefined();
 });
+
 // GOOD: Verifies through interface
 test("createUser makes user retrievable", async () => {
   const user = await createUser({ name: "Alice" });
@@ -56,6 +61,7 @@ test("createUser makes user retrievable", async () => {
 ```
 
 **Tautological tests**: Expected value restates the implementation, so the test passes by construction.
+
 ```typescript
 // BAD: Expected value is recomputed the way the code computes it
 test("calculateTotal sums line items", () => {

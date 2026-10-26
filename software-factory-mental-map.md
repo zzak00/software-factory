@@ -95,7 +95,7 @@ Skill modes: **auto** starts by itself at that point; *suggested* is loaded by t
 
 ### Maintain
 
-- Tools: `git fetch origin`, `git switch main`, `git merge --ff-only origin/main`, `git rev-parse main origin/main`.
+- Tools: `git fetch origin`, `git switch main`, `git merge --ff-only origin/main`, `git rev-parse main origin/main`; `wt remove BRANCH` only on your cleanup decision.
 - Skills: `correct` when the same agent mistake happens twice (enforce it in structure, not prose); `maintain-verification-skill` when `verify-<app>` drifts.
 
 **Done when:** local main equals origin/main, the key check passes, and the issue is closed. Cleanup is a separate decision.
