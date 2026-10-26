@@ -4,6 +4,8 @@
 # that would bypass the factory gates or destroy uncommitted work. Exit code 2
 # blocks the command and shows the reason to the agent; exit 0 allows it.
 # Treat unset variables as errors instead of silently using empty text.
+# Empty arrays are expanded as ${name[@]+"${name[@]}"} below, because bash 3.2
+# (macOS /bin/bash) treats an empty array as unset under set -u.
 set -u
 
 # Print why the command is blocked (to stderr, which Claude Code shows the
@@ -73,7 +75,7 @@ while IFS= read -r segment; do
       # Reject force and bulk pushes; collect the non-option arguments
       # (the remote, then any branches or refspecs).
       positional=()
-      for arg in "${args[@]}"; do
+      for arg in ${args[@]+"${args[@]}"}; do
         case "$arg" in
           --force|-f) block "force push is not allowed; use --force-with-lease on a feature branch" ;;
           --all|--mirror) block "push one branch at a time" ;;
@@ -88,7 +90,7 @@ while IFS= read -r segment; do
       fi
       # Each named refspec: "+x" forces; "src:dst" pushes to dst; HEAD means
       # the current branch. Block any that lands on a protected branch.
-      for refspec in "${positional[@]:1}"; do
+      for refspec in ${positional[@]+"${positional[@]:1}"}; do
         [[ $refspec == +* ]] && block "force push is not allowed"
         target=${refspec##*:}
         target=${target#refs/heads/}
@@ -98,23 +100,23 @@ while IFS= read -r segment; do
       ;;
     reset)
       # --hard throws away uncommitted changes.
-      [[ " ${args[*]} " == *" --hard "* ]] && block "git reset --hard discards work"
+      [[ " ${args[*]-} " == *" --hard "* ]] && block "git reset --hard discards work"
       ;;
     clean)
       # Any short flag group containing f (-f, -fd, -xdf) or --force deletes files.
-      for arg in "${args[@]}"; do
+      for arg in ${args[@]+"${args[@]}"}; do
         [[ $arg == --force || ( $arg == -* && $arg != --* && $arg == *f* ) ]] && block "git clean -f deletes untracked files"
       done
       ;;
     branch)
       # -D deletes a branch even when its work is not merged; -d is safe.
-      for arg in "${args[@]}"; do
+      for arg in ${args[@]+"${args[@]}"}; do
         [ "$arg" = -D ] && block "git branch -D deletes unmerged work; use -d"
       done
       ;;
     checkout|restore)
       # "." means every file: it discards all local changes at once.
-      for arg in "${args[@]}"; do
+      for arg in ${args[@]+"${args[@]}"}; do
         [ "$arg" = . ] && block "git $subcommand . discards all local changes"
       done
       ;;

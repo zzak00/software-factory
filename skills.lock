@@ -209,7 +209,7 @@ files:
   - path: "skills/git-guardrails-claude-code/agents/openai.yaml"
     sha256: "a19bd04f046d345bb46b6b448f552517d550b7667344657d3bf65179b6d3a030"
   - path: "skills/git-guardrails-claude-code/scripts/block-dangerous-git.sh"
-    sha256: "23b4ec87fc36774f0941b1a595cc26ce0b9d0a417426ab474577e811f3d1bf03"
+    sha256: "d542998ad7a588fd4907a7153b442a2d8af701c0a8a6cacd8c143c4b90213097"
   - path: "skills/grilling/SKILL.md"
     sha256: "adb11ec96d224cd9c4b13bc7cf36d2d8ffeec3fde19c515148bfd6b90070945f"
   - path: "skills/grilling/agents/openai.yaml"
