@@ -121,14 +121,6 @@ else
 fi
 default_branch=$(printf '%s' "$repository_state" | jq -r '.defaultBranchRef.name // empty') || fail "invalid repository response"
 [ -n "$default_branch" ] || fail "repository has no default branch; initialize it before applying factory configuration"
-# GitHub names a new repository's first branch from the owner's settings. A
-# repository created here always uses main; an existing one keeps its branch.
-if [ "$REPO_CREATED" -eq 1 ] && [ "$default_branch" != main ]; then
-  gh api -H "X-GitHub-Api-Version: $API_VERSION" --method POST "repos/$OWNER/$REPOSITORY/branches/$default_branch/rename" -f new_name=main >/dev/null || fail "cannot rename default branch to main"
-  repository_state=$(gh repo view "$OWNER/$REPOSITORY" --json visibility,defaultBranchRef) || fail "cannot inspect renamed repository"
-  default_branch=$(printf '%s' "$repository_state" | jq -r '.defaultBranchRef.name // empty') || fail "invalid repository response"
-  [ "$default_branch" = main ] || fail "default branch was not renamed to main"
-fi
 
 # Inspect workflows and every repository ruleset before changing Projects.
 # A single ruleset page could hide an existing factory ruleset and make a
@@ -143,6 +135,27 @@ ruleset_count=$(printf '%s' "$rulesets" | jq '[.[] | select(.name == "software-f
 if [ "$ruleset_count" -eq 1 ]; then
   existing_ruleset_id=$(printf '%s' "$rulesets" | jq -r '.[] | select(.name == "software-factory-development") | .id')
   existing_ruleset=$(gh api -H "X-GitHub-Api-Version: $API_VERSION" "repos/$OWNER/$REPOSITORY/rulesets/$existing_ruleset_id") || fail "cannot inspect factory ruleset"
+fi
+
+# GitHub names a new repository's first branch from the owner's settings.
+# An unused repository is renamed to main: one created in this run, or one an
+# interrupted run left with a single branch, a single commit, no workflow, and
+# no factory ruleset. Any other repository keeps its default branch.
+if [ "$default_branch" != main ]; then
+  repo_unused=$REPO_CREATED
+  if [ "$repo_unused" -eq 0 ] && [ "$workflow_count" -eq 0 ] && [ "$ruleset_count" -eq 0 ]; then
+    branches=$(gh api -H "X-GitHub-Api-Version: $API_VERSION" "repos/$OWNER/$REPOSITORY/branches?per_page=2") || fail "cannot inspect repository branches"
+    commits=$(gh api -H "X-GitHub-Api-Version: $API_VERSION" "repos/$OWNER/$REPOSITORY/commits?sha=$default_branch&per_page=2") || fail "cannot inspect repository commits"
+    branch_count=$(printf '%s' "$branches" | jq 'length') || fail "invalid branch response"
+    commit_count=$(printf '%s' "$commits" | jq 'length') || fail "invalid commit response"
+    [ "$branch_count" -eq 1 ] && [ "$commit_count" -eq 1 ] && repo_unused=1
+  fi
+  if [ "$repo_unused" -eq 1 ]; then
+    gh api -H "X-GitHub-Api-Version: $API_VERSION" --method POST "repos/$OWNER/$REPOSITORY/branches/$default_branch/rename" -f new_name=main >/dev/null || fail "cannot rename default branch to main"
+    repository_state=$(gh repo view "$OWNER/$REPOSITORY" --json visibility,defaultBranchRef) || fail "cannot inspect renamed repository"
+    default_branch=$(printf '%s' "$repository_state" | jq -r '.defaultBranchRef.name // empty') || fail "invalid repository response"
+    [ "$default_branch" = main ] || fail "default branch was not renamed to main"
+  fi
 fi
 
 # Read which templates exist before any write. Existing templates are never

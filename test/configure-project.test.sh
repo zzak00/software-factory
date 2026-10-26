@@ -54,7 +54,9 @@ case "$1 $2" in
     fi
     branch=main
     if [ "${GH_TEST_MODE:-ok}" = new-repo ]; then
-      if ! grep -q 'repo create' "$GH_TEST_LOG"; then
+      # GH_TEST_REPO_EXISTS models a run interrupted after creating the
+      # repository and before renaming its branch.
+      if [ "${GH_TEST_REPO_EXISTS:-0}" != 1 ] && ! grep -q 'repo create' "$GH_TEST_LOG"; then
         printf 'GraphQL: Could not resolve to a Repository with the name test/project.\n' >&2
         exit 1
       fi
@@ -63,6 +65,13 @@ case "$1 $2" in
     jq -n --arg visibility "${GH_TEST_REPO_VISIBILITY:-PRIVATE}" --arg branch "$branch" '{visibility:$visibility,defaultBranchRef:{name:$branch}}'
     ;;
   "repo create") exit 0 ;;
+  # An untouched repository has one branch and one commit; ok mode has more.
+  "api repos/test/project/branches?per_page=2")
+    if [ "${GH_TEST_MODE:-ok}" = new-repo ]; then printf '%s\n' '[{"name":"master"}]'; else printf '%s\n' '[{"name":"main"},{"name":"feature"}]'; fi
+    ;;
+  "api repos/test/project/commits?sha=master&per_page=2")
+    if [ "${GH_TEST_MODE:-ok}" = new-repo ]; then printf '%s\n' '[{"sha":"a"}]'; else printf '%s\n' '[{"sha":"a"},{"sha":"b"}]'; fi
+    ;;
   "api users/test") printf '{"id":42,"type":"%s"}\n' "${GH_TEST_OWNER_TYPE:-User}" ;;
   # In no-ci mode, a successful Contents API write makes the workflow appear on
   # the next read, modeling GitHub state changing during one apply operation.
@@ -249,6 +258,13 @@ grep -q 'repo create test/project --private --add-readme' "$LOG" || fail "missin
 grep -q 'POST repos/test/project/branches/master/rename -f new_name=main' "$LOG" || fail "new repository branch was not renamed to main"
 jq -r '.content' "$CI_BODY" | base64 --decode | grep -q 'branches: \["main"\]' || fail "new repository CI was not pinned to main"
 jq -e '.branch == "main"' "$CI_BODY" >/dev/null || fail "new repository CI was not committed to main"
+
+: > "$LOG"
+# A run interrupted after creating the repository leaves it on master with
+# one commit. The rerun finds it unused and still renames the branch to main.
+GH_TEST_MODE=new-repo GH_TEST_REPO_EXISTS=1 run_configure --apply >/dev/null || fail "interrupted new repository was not recovered"
+if grep -q 'repo create' "$LOG"; then fail "recovery created the repository again"; fi
+grep -q 'POST repos/test/project/branches/master/rename -f new_name=main' "$LOG" || fail "interrupted new repository branch was not renamed to main"
 
 : > "$LOG"
 # A new repository also receives the change issue form and PR template from
