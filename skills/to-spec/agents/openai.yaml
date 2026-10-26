@@ -1,5 +1,5 @@
 interface:
   display_name: "To Spec"
-  short_description: "Turn approved decisions into a working spec"
+  short_description: "Turn settled decisions into a gated issue or product spec"
 policy:
   allow_implicit_invocation: false
