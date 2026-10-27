@@ -1,7 +1,6 @@
 ---
 name: domain-modeling
-description: Build and sharpen a project's domain model. Use when discussing codebase terminology, defining domain terms, or recording or editing an ADR.
-disable-model-invocation: true
+description: Build and sharpen a project's domain model. Use when designing an ontology, entities and relationships, or a data model; when discussing codebase terminology or defining domain terms; or when recording or editing an ADR.
 ---
 
 # Domain Modeling
