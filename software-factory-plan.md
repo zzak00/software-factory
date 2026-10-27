@@ -28,7 +28,7 @@ A direct, reviewable path from accepted intent to merged code. It works without 
 | Plan stage | Standard work only. Approved in Plannotator and recorded in the PR body, not committed |
 | Product discovery | Parent issue holds the spec; slices are sub-issues with blockers; ADRs for one-way decisions; walking-skeleton first slice |
 | Frontend | Claude Design prototypes are the visual reference. `/design-sync` keeps the design system in step. `verify-<app>` screenshots prove UI ACs |
-| Invocation | Code, decisions, and GitHub changes are invoked only. Review and reference skills may load on their own. Plannotator opens at plan and spec gates |
+| Invocation | Code and GitHub changes are invoked only. Review and reference skills, `domain-modeling`, and `writing-for-agents` may load on their own; they write files only after the user's yes. Plannotator opens at plan and spec gates |
 | Skill bundle | Pinned upstream revisions with factory patches recorded in skills.lock. Python conventions live in each repo's CLAUDE.md |
 
 ## Verification and remaining boundary
