@@ -228,6 +228,14 @@ run_configure() {
 run_configure >/dev/null
 [ ! -s "$LOG" ] || fail "dry run called GitHub"
 
+# A title that already carries the suffix would create a doubled Project name.
+: > "$LOG"
+if output=$(run_configure --project-title "Development - Software Factory" --apply 2>&1); then
+  fail "suffixed project title was accepted"
+fi
+printf '%s' "$output" | grep -q 'pass --project-title "Development"' || fail "suffixed project title error does not name the base title"
+[ ! -s "$LOG" ] || fail "suffixed project title called GitHub"
+
 : > "$LOG"
 # A compatible factory setup is idempotent and does not update fields or
 # create resources again.

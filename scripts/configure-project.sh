@@ -57,6 +57,9 @@ done
 [ -n "$OWNER" ] || fail "--owner is required"
 [ -n "$REPOSITORY" ] || fail "--repo is required"
 [ -n "$PROJECT_TITLE" ] || fail "--project-title is required"
+case "$PROJECT_TITLE" in
+  *" - Software Factory") fail "setup adds \" - Software Factory\" itself; pass --project-title \"${PROJECT_TITLE% - Software Factory}\"" ;;
+esac
 [ "$REQUIRED_CHECK_EXPLICIT" -eq 0 ] || [ -n "$REQUIRED_CHECK" ] || fail "--required-check cannot be empty"
 case "$VISIBILITY" in private|public) ;; *) fail "--visibility must be private or public" ;; esac
 case "$OWNER/$REPOSITORY" in *[!A-Za-z0-9_./-]*) fail "owner and repository contain unsupported characters" ;; esac
