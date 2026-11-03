@@ -459,8 +459,8 @@ final_track=$(printf '%s' "$fields" | jq -r '.fields[] | select(.name == "Track"
 [ "$final_risk" = "Standard,Elevated" ] || fail "Risk verification failed"
 [ "$final_track" = "Fast,Standard,Product" ] || fail "Track verification failed"
 
-# Built-in Project workflows put new issues in Inbox and closed or merged work
-# in Done. GitHub's API can read them but not enable them, so list each one
+# Built-in Project workflows put new issues in Inbox, issues with a linked pull
+# request in In Review, and closed or merged work in Done. GitHub's API can read them but not enable them, so list each one
 # that is off or absent, with the setting to choose in the web UI. The API
 # does not expose the chosen Status or filter; those remain a human check.
 # GraphQL variables are intentionally literal here.
@@ -473,6 +473,7 @@ workflow_missing=0
 for required in \
   "Auto-add to project|on, filter is:issue,pr is:open repo:$OWNER/$REPOSITORY" \
   "Item added to project|on, set Status to Inbox" \
+  "Pull request linked to issue|on, set Status to In Review" \
   "Item closed|on, set Status to Done" \
   "Pull request merged|on, set Status to Done"; do
   name=${required%%|*}

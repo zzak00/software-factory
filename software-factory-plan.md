@@ -16,7 +16,7 @@ A direct, reviewable path from accepted intent to merged code. It works without 
 - Read every ruleset page before deciding one is absent. Reject a Project GraphQL result whose repository, field, or view connection has more pages, so a partial lookup cannot trigger a duplicate link or Board.
 - The factory Project has a Track field (Fast, Standard, Product) beside Status and Risk, created and checked the same way as Risk.
 - Setup adds the change issue form and pull request template from `templates/` only when absent, never replacing an existing template, and only before the factory ruleset requires pull requests.
-- New issues land in Inbox, and closed issues and merged pull requests move to Done, through the Project's built-in workflows. GitHub's API cannot enable them, so they are turned on in the web UI; setup reads them on every run and lists any that are off. No token-based Action is used.
+- New issues land in Inbox, issues with a linked pull request move to In Review, and closed issues and merged pull requests move to Done, through the Project's built-in workflows. GitHub's API cannot enable them, so they are turned on in the web UI; setup reads them on every run and lists any that are off. No token-based Action is used.
 - Agent skills are an optional, separately installed artifact kept in this repository. Their installer verifies exact lock coverage and refuses differing destinations. The mental map is Markdown, and this repository does not use npm.
 
 ## Accepted workflow decisions
@@ -28,6 +28,7 @@ A direct, reviewable path from accepted intent to merged code. It works without 
 | Plan stage | Standard work only. Approved in Plannotator and recorded in the PR body, not committed |
 | Product discovery | Parent issue holds the spec; slices are sub-issues with blockers; ADRs for one-way decisions; walking-skeleton first slice |
 | Frontend | Claude Design prototypes are the visual reference. `/design-sync` keeps the design system in step. `verify-<app>` screenshots prove UI ACs |
+| Board | The issue's card follows Inbox, Ready, In Progress, In Review, Done. Workflows set Inbox, In Review (pull request linked), and Done; the operator sets Ready; `implement` sets In Progress after the user's yes. Work starts only on a Ready card |
 | Invocation | Code and GitHub changes are invoked only. Review and reference skills, `domain-modeling`, and `writing-for-agents` may load on their own; they write files only after the user's yes. Plannotator opens at plan and spec gates |
 | Skill bundle | Pinned upstream revisions with factory patches recorded in skills.lock. Python conventions live in each repo's CLAUDE.md |
 

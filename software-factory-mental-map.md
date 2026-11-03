@@ -12,6 +12,8 @@ The factory takes a change from intent to verified merged code. The size of the 
 
 Escalate when the work outgrows its track: Fast -> Standard when the diff grows; Standard -> Product when the scope splits. Record the track on the issue.
 
+**Board:** the issue's card moves Inbox -> Ready -> In Progress -> In Review -> Done. Workflows set Inbox, In Review (when a PR linked to the issue opens), and Done; you set Ready; `implement` sets In Progress after your yes. Work starts only on a Ready card. The rule and commands live in `skills/implement/KANBAN.md`.
+
 **Gates on every track:**
 - an issue with ACs;
 - a reproduction first, for bugs;
@@ -60,7 +62,7 @@ Skill modes: **auto** starts by itself at that point; *suggested* is loaded by t
 
 **Done when:** the issue has the outcome, scope, ACs (AC1...), Risk, Track, and validation seam.
 
-### Prepare -> In Progress
+### Prepare
 
 - Tools: `git`, `wt switch --create BRANCH --base SHA --no-cd --no-hooks`, repo setup commands.
 - Once per repo: an existing repository before its first item; a new project inside slice 1, after Discovery:
@@ -79,7 +81,7 @@ Skill modes: **auto** starts by itself at that point; *suggested* is loaded by t
 
 **Done when:** you approve a plan listing the files, the order of work tied to ACs, risks, and the proof for each AC. It goes into the PR body later.
 
-### Implement
+### Implement -> In Progress
 
 - Tools: the repo's formatter, linter, type checks, tests; `ruff`, `pytest`; frontend lint, typecheck, and tests.
 - Skills:
@@ -87,21 +89,23 @@ Skill modes: **auto** starts by itself at that point; *suggested* is loaded by t
   - *`diagnosing-bugs`* for bugs (reproduce before fixing);
   - *`frontend-ui-engineering`* for UI work.
 - UI: build from the prototype and the synced design system; compare `verify-<app>` screenshots with the prototype.
+- `implement` moves the card from Ready to In Progress after your yes; it stops on a card that is not Ready.
 - You stage and commit.
 
 **Done when:** every AC has passing evidence, checks are green, and the diff matches the plan.
 
-### Review -> In Review
+### Review
 
 - Tools: `git diff BASE..HEAD`.
 - Skills: *`code-review`* in a fresh context (Standards axis + Spec axis against the ACs). Elevated: a second reviewer on a different model.
 
 **Done when:** findings are resolved and the reviewed SHA is recorded.
 
-### Integrate -> Done
+### Integrate -> In Review -> Done
 
 - Tools: `git push`, `gh pr create`, `gh pr checks --watch`, `gh pr merge NUMBER --merge --match-head-commit SHA`.
 - Skills: `pr` writes the body (summary, plan, AC -> evidence, reviewed SHA, merge danger); after CI is green, `plannotator-review` opens the exact head for your review.
+- The Project's workflows move the card to In Review when the PR opens and to Done on merge.
 
 **Done when:** the reviewed SHA is merged. Any new head reruns CI and review.
 
