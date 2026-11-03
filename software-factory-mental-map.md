@@ -77,7 +77,7 @@ Skill modes: **auto** starts by itself at that point; *suggested* is loaded by t
 ### Plan (Standard)
 
 - Tools: harness plan mode (Claude Code or Codex).
-- Skills: `architect` + *`api-and-interface-design`*; leaving plan mode **auto**-opens the Plannotator plan review.
+- Skills: `architect` + *`api-and-interface-design`* (+ *`python-app-architecture`* for Python apps); leaving plan mode **auto**-opens the Plannotator plan review.
 
 **Done when:** you approve a plan listing the files, the order of work tied to ACs, risks, and the proof for each AC. It goes into the PR body later.
 
@@ -123,10 +123,10 @@ Skill modes: **auto** starts by itself at that point; *suggested* is loaded by t
 | Core | `grilling`, `to-spec`, `architect`, `implement`, `tdd`, `diagnosing-bugs`, `code-review`, `pr`, `plannotator-review` |
 | Setup (once per repo) | `writing-for-agents`, `git-guardrails-claude-code`, `create-verification-skill`, `/design-sync` (built-in) |
 | Product | `prototype`, `domain-modeling`, `wayfinder`, `to-tickets` |
-| Stack | `api-and-interface-design`, `frontend-ui-engineering` |
+| Stack | `api-and-interface-design`, `frontend-ui-engineering`, `python-app-architecture` |
 | Optional | `maintain-verification-skill`, `focused-output` |
 
-Python conventions live in each repo's CLAUDE.md, not in a skill.
+`python-app-architecture` holds the shared Python app layout; repo-specific Python conventions live in each repo's CLAUDE.md.
 
 ## 4. Where evidence lives
 

@@ -30,7 +30,7 @@ A direct, reviewable path from accepted intent to merged code. It works without 
 | Frontend | Claude Design prototypes are the visual reference. `/design-sync` keeps the design system in step. `verify-<app>` screenshots prove UI ACs |
 | Board | The issue's card follows Inbox, Ready, In Progress, In Review, Done. Workflows set Inbox, In Review (pull request linked), and Done; the operator sets Ready; `implement` sets In Progress after the user's yes. Work starts only on a Ready card |
 | Invocation | Code and GitHub changes are invoked only. Review and reference skills, `domain-modeling`, and `writing-for-agents` may load on their own; they write files only after the user's yes. Plannotator opens at plan and spec gates |
-| Skill bundle | Pinned upstream revisions with factory patches recorded in skills.lock. Python conventions live in each repo's CLAUDE.md |
+| Skill bundle | Pinned upstream revisions with factory patches recorded in skills.lock, plus factory-authored skills. `python-app-architecture` holds the shared Python app layout; repo-specific Python conventions live in each repo's CLAUDE.md |
 
 ## Verification and remaining boundary
 
