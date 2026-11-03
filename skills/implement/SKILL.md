@@ -11,6 +11,7 @@ If the user passes an issue reference, read it with `gh issue view` and state it
 ## Before editing
 
 - Confirm you are in the item's Worktrunk worktree (`wt list` marks the current one), not the main checkout. If not, stop: the operator runs Prepare first.
+- Read the issue's card per [`KANBAN.md`](KANBAN.md). Ready: with the title and ACs, ask to move it to In Progress, and move it after the yes. In Progress or In Review: continue without a move. Inbox, Done, or any other Status: stop, say the ticket is not Ready, and ask the operator to move the card to Ready themselves.
 - Record the starting `HEAD`. Inspect tracked and untracked changes, and preserve work you did not make.
 - Stop when behavior is ambiguous, sources conflict, or the plan no longer fits the code. Return to the plan instead of improvising.
 
@@ -30,4 +31,4 @@ If the user passes an issue reference, read it with `gh issue view` and state it
 - Evidence per AC: the command or screenshot, and its result.
 - Checks run, checks skipped with the reason, and open uncertainty.
 
-Then hand the diff to `code-review`. Do not stage, commit, push, or change the issue or Project; the operator owns them.
+Then hand the diff to `code-review`. Do not stage, commit, push, or change the issue; the operator owns them. The card's move to In Progress is your only Project change.

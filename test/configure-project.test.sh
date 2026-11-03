@@ -158,9 +158,9 @@ case "$1 $2" in
       # Project: only sub-issue auto-add is on and auto-add is absent.
       *workflows*)
         if [ "${GH_TEST_MODE:-ok}" = workflows-off ]; then
-          printf '%s\n' '{"data":{"node":{"workflows":{"pageInfo":{"hasNextPage":false},"nodes":[{"name":"Auto-add sub-issues to project","enabled":true},{"name":"Item added to project","enabled":false},{"name":"Item closed","enabled":false},{"name":"Pull request merged","enabled":false}]}}}}'
+          printf '%s\n' '{"data":{"node":{"workflows":{"pageInfo":{"hasNextPage":false},"nodes":[{"name":"Auto-add sub-issues to project","enabled":true},{"name":"Item added to project","enabled":false},{"name":"Pull request linked to issue","enabled":false},{"name":"Item closed","enabled":false},{"name":"Pull request merged","enabled":false}]}}}}'
         else
-          printf '%s\n' '{"data":{"node":{"workflows":{"pageInfo":{"hasNextPage":false},"nodes":[{"name":"Auto-add to project","enabled":true},{"name":"Item added to project","enabled":true},{"name":"Item closed","enabled":true},{"name":"Pull request merged","enabled":true}]}}}}'
+          printf '%s\n' '{"data":{"node":{"workflows":{"pageInfo":{"hasNextPage":false},"nodes":[{"name":"Auto-add to project","enabled":true},{"name":"Item added to project","enabled":true},{"name":"Pull request linked to issue","enabled":true},{"name":"Item closed","enabled":true},{"name":"Pull request merged","enabled":true}]}}}}'
         fi
         exit 0
         ;;
@@ -253,9 +253,10 @@ output=$(GH_TEST_MODE=workflows-off run_configure --apply) || fail "disabled Pro
 printf '%s' "$output" | grep -q 'action needed in https://github.com/users/test/projects/7/workflows:' || fail "Project workflow page was not reported"
 printf '%s' "$output" | grep -q -- '- Auto-add to project: on, filter is:issue,pr is:open repo:test/project' || fail "absent auto-add workflow was not reported"
 printf '%s' "$output" | grep -q -- '- Item added to project: on, set Status to Inbox' || fail "disabled item-added workflow was not reported"
+printf '%s' "$output" | grep -q -- '- Pull request linked to issue: on, set Status to In Review' || fail "disabled pull-request-linked workflow was not reported"
 printf '%s' "$output" | grep -q -- '- Item closed: on, set Status to Done' || fail "disabled item-closed workflow was not reported"
 printf '%s' "$output" | grep -q -- '- Pull request merged: on, set Status to Done' || fail "disabled pull-request-merged workflow was not reported"
-printf '%s' "$output" | grep -q 'workflows to enable: 4' || fail "disabled Project workflows were not counted"
+printf '%s' "$output" | grep -q 'workflows to enable: 5' || fail "disabled Project workflows were not counted"
 if grep -Eq 'graphql --input|deleteProjectV2Workflow' "$LOG"; then fail "Project workflows were changed"; fi
 
 : > "$LOG"
