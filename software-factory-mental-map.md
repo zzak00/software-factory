@@ -97,7 +97,7 @@ Skill modes: **auto** starts by itself at that point; *suggested* is loaded by t
 ### Review
 
 - Tools: `git diff BASE..HEAD`.
-- Skills: *`code-review`* in a fresh context (Standards axis + Spec axis against the ACs). Elevated: a second reviewer on a different model.
+- Skills: *`code-review`* in a fresh context (Code quality axis + Spec axis against the ACs). Elevated: a second reviewer on a different model.
 
 **Done when:** findings are resolved and the reviewed SHA is recorded.
 

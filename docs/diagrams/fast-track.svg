@@ -33,7 +33,7 @@
 <rect x="178" y="290" width="60" height="12" rx="2" fill="transparent" stroke="#2d3142" stroke-opacity="0.45" stroke-width="0.8"/>
 <text x="208.0" y="299" fill="#2d3142" fill-opacity="0.85" font-size="7" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.08em">SUB-AGENTS</text>
 <text x="248" y="300" fill="#2d3142" font-size="12" font-weight="600" font-family="Geist, system-ui, sans-serif">Review: code-review</text>
-<text x="182" y="318" fill="#4f5d75" font-size="9" font-family="'Geist Mono', ui-monospace, monospace">2 fresh-context sub-agents: Standards axis + Spec axis (ACs) · reviewed SHA</text>
+<text x="182" y="318" fill="#4f5d75" font-size="9" font-family="'Geist Mono', ui-monospace, monospace">2 fresh-context sub-agents: Code quality axis + Spec axis (ACs) · reviewed SHA</text>
 <text x="154" y="388" fill="#5a6580" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="end" letter-spacing="0.14em">05</text>
 <rect x="170" y="366" width="620" height="58" rx="6" fill="#f5f5f5"/>
 <rect x="170" y="366" width="620" height="58" rx="6" fill="#f5f5f5" stroke="#2d3142" stroke-width="1"/>
