@@ -1,0 +1,5 @@
+interface:
+  display_name: "Python App Architecture"
+  short_description: "Layers, ports, and adopt-when patterns for Python apps"
+policy:
+  allow_implicit_invocation: true
