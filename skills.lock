@@ -245,7 +245,7 @@ files:
   - path: "skills/prototype/agents/openai.yaml"
     sha256: "0b7e5358db2f1a225224d9eea1f2bc54f71529b1d773630c32445319db4f7eb7"
   - path: "skills/python-app-architecture/SKILL.md"
-    sha256: "c02c22ea078c3d55ce7efece024ad70fb22608c57a11a1342d715d355ff197bc"
+    sha256: "6fec1081e57a74e86136f0d1fd1e8993b1e5a7b4e3f88b992ce0f9c9f0a5d934"
   - path: "skills/python-app-architecture/agents/openai.yaml"
     sha256: "90945a5a851b1486641d11df261034ed54a3032e32b71bfb1936b3038d7e8d12"
   - path: "skills/tdd/SKILL.md"
